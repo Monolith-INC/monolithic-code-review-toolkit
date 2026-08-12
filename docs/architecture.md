@@ -66,9 +66,11 @@ make the payload installable.
 
 ## What the portable manifest carries
 
-Required `name` and `version`; optional `description`, `schemaVersion`, and `extensions`. The
-`extensions` object is opaque — preserved through inspection but not interpreted — so project
-metadata lives under an owned namespace, `inc.monolith.review`.
+Required `name` and `version`; optional `description`, `schemaVersion`, and `extensions`. This plugin
+declares only the first four — `extensions` is opaque, preserved through inspection but never read by
+the toolkit or by any host, and adapters strip it from the compiled vendor manifest entirely. Project
+metadata that nothing consumes belongs in documentation, not in a manifest where it can silently go
+stale.
 
 Hooks and rules do not need vendor files either. The compiler reads them from
 `extensions["org.agent-plugins.distribution"]` as `rules[]` (with inline content, activation, and

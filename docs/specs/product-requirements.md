@@ -64,10 +64,10 @@ user instruction for that specific action.
 `review-setup` resolves whatever the consuming repository uses onto three capabilities:
 
 | Capability                  | Returns                                                     |
-| --------------------------- | ------------------------------------------------------------ |
-| `fetch_work_item(id)`       | title, description, requirements, acceptance criteria / DoD   |
-| `fetch_parent(id)`          | parent item — task → story, story → feature                   |
-| `list_linked_artifacts(id)` | specs, design documents, attachments, linked URLs             |
+| --------------------------- | ----------------------------------------------------------- |
+| `fetch_work_item(id)`       | title, description, requirements, acceptance criteria / DoD |
+| `fetch_parent(id)`          | parent item — task → story, story → feature                 |
+| `list_linked_artifacts(id)` | specs, design documents, attachments, linked URLs           |
 
 Unsatisfiable capabilities are recorded in `unsupported` so dependent skills degrade honestly.
 
@@ -82,10 +82,11 @@ sub-issue = task.
 **DoD:** `agent-plugin validate` returns `{"ok":true}`; `inspect` lists every skill with zero
 diagnostics; all three vendor payloads compile and verify; CI enforces all of it.
 
-- **US1.1** Portable plugin root — manifest with `schemaVersion`, `extensions` namespace, skills directory.
+- **US1.1** Portable plugin root — manifest with `schemaVersion`, skills as immediate children of `skills/`.
 - **US1.2** Pinned toolkit integration — reproducible checkout, build, and CLI invocation.
 - **US1.3** Vendor payload compilation and drift verification for claude, cursor, codex.
-- **US1.4** Repository invariant validation — version lockstep, portable frontmatter, unshippable-content guard — with unit tests and CI.
+- **US1.4** Repository invariant validation — version lockstep, portable frontmatter,
+  unshippable-content guard — with unit tests and CI.
 
 ### F2 — Requirement source resolution
 

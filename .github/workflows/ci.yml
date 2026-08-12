@@ -21,10 +21,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+      # `python`, not `python3`: setup-python provides `python` on all three
+      # runners, but Windows has no `python3.exe` and CMD does not alias it.
       - name: Validate repository invariants
-        run: python3 scripts/validate_plugin.py .
+        run: python scripts/validate_plugin.py .
       - name: Run tests
-        run: python3 -m unittest discover -s tests -t . -v
+        run: python -m unittest discover -s tests -t . -v
 
   # Template conformance. Builds the pinned agent-plugins-toolkit and runs its
   # own validator and payload verifier against our plugin root — this is the
