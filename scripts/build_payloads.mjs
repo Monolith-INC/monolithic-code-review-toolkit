@@ -4,11 +4,10 @@
 //   node scripts/build_payloads.mjs build    # regenerate payloads/<vendor>/
 //   node scripts/build_payloads.mjs verify   # fail if payloads drift from source
 //
-// The toolkit's `agent-plugin install` command is hard-coded to its own
-// hello-world sample at the pinned revision, so it cannot distribute this
-// plugin. What it *does* provide is the adapter compile/verify pipeline, which
-// is what this script drives — the same calls each adapter's own
-// scripts/payload.mjs makes, pointed at our plugin root and our output tree.
+// Drives the toolkit's adapter compile/verify pipeline — the same calls each
+// adapter's own scripts/payload.mjs makes, pointed at our plugin root and our
+// output tree. The compiled payloads are the release artifacts; each host
+// installs its own natively.
 //
 // Payloads are build output. Never hand-edit payloads/.
 

@@ -82,12 +82,8 @@ Reassess immediately after the v0.1.0 release, or sooner if post-flight review c
 lines in practice. The PyPI-runtime option is the designated fallback and needs no rework of the
 portable manifest to adopt — only new skill bodies and a `review-setup` install step.
 
-Also worth re-checking upstream at that point:
-
-- Whether the toolkit has relaxed the payload allowlist to carry bundled skill resources.
-- Whether `agent-plugin install` still hard-codes `hello-world` (`packages/cli/src`, the
-  `inspection.manifest.name !== "hello-world"` guard) — it does at this pin, which is why
-  distribution is host-native rather than through the toolkit CLI.
+Also worth re-checking upstream at that point: whether the toolkit has relaxed the payload allowlist
+to carry bundled skill resources.
 
 ## Related
 

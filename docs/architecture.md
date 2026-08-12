@@ -57,11 +57,12 @@ build if any other file appears in a skill directory.
 commands natively, and in Claude Code `commands/` and `skills/` are the same discovery surface, but
 none of that is reachable through the template. Skills are the invocation surface everywhere.
 
-**Installation is host-native.** `agent-plugin install` refuses any plugin whose manifest name is not
-`hello-world` at the pinned revision, so it cannot distribute this plugin. Payloads are released as
-per-host archives and installed through each host's own mechanism. For Claude Code that is
-skills-directory discovery: a folder containing `.claude-plugin/plugin.json` under `~/.claude/skills/`
-or `<repo>/.claude/skills/` loads as `<name>@skills-dir` with no marketplace and no install step.
+**Installation is host-native.** The toolkit's role here is to compile and verify; distribution
+belongs to each host. Payloads are released as per-host archives and installed through the host's own
+mechanism. For Claude Code that is skills-directory discovery: a folder containing
+`.claude-plugin/plugin.json` under `~/.claude/skills/` or `<repo>/.claude/skills/` loads as
+`<name>@skills-dir` with no marketplace and no install step — so nothing has to be hand-authored to
+make the payload installable.
 
 ## What the portable manifest carries
 

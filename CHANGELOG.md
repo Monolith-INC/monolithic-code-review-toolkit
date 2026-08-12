@@ -54,8 +54,8 @@ after this release:
   and pull-request comment line-anchoring are performed by the agent rather than by tested helper
   code — the acknowledged weak point of this release.
 - No adapter emits a `commands/` directory, so there is no slash-command surface on any host.
-- `agent-plugin install` is hard-coded to the toolkit's own `hello-world` sample at the pinned
-  revision, so installation is host-native rather than through the toolkit CLI.
+- Installation is host-native: payloads ship as per-host archives and load through each host's own
+  mechanism.
 
 [Unreleased]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/releases/tag/v0.1.0

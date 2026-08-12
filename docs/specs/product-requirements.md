@@ -153,5 +153,3 @@ Recorded rather than hidden, and revisited after v0.1.0:
 - Diff hunk parsing and comment line-anchoring are performed by the agent, not by tested code.
   This is the weak point of ADR-0001 and the reason it carries a revisit trigger.
 - No slash-command surface on any host; skills are the only invocation surface.
-- `agent-plugin install` cannot distribute this plugin at the pinned revision, so installation is
-  host-native.
