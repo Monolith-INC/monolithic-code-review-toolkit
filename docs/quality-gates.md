@@ -8,7 +8,7 @@ Run on a clean checkout. The first toolkit-backed command clones and builds the 
 ```bash
 pnpm validate         # portable spec conformance
 pnpm inspect          # deterministic component listing
-pnpm payloads:verify  # vendor payloads match their source
+pnpm payloads:build   # every vendor adapter accepts this source
 pnpm lint:plugin      # repository invariants
 pnpm test             # unit tests
 ```
@@ -18,24 +18,27 @@ version is resolved through `npx` when it is absent.
 
 ## What each gate proves
 
-| Gate                   | Proves                                                                                                                        |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `pnpm validate`        | The plugin root is a conformant Agent Plugins v1.0.0 root. Expect `{"ok":true}`.                                                |
-| `pnpm inspect`         | Every skill is discoverable and the manifest parses as intended. Expect `diagnostics: []` and one entry per skill.               |
-| `pnpm payloads:verify` | Committed payloads are exactly what the current source compiles to, for all three vendors. Catches a hand-edited payload.        |
-| `pnpm lint:plugin`     | Version lockstep, the portable frontmatter contract, and the guard against content adapters would silently drop.                 |
-| `pnpm test`            | The validator itself behaves — every failure mode covered, plus an assertion that this repository validates.                     |
+| Gate                  | Proves                                                                                                                       |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm validate`       | The plugin root is a conformant Agent Plugins v1.0.0 root. Expect `{"ok":true}`.                                             |
+| `pnpm inspect`        | Every skill is discoverable and the manifest parses as intended. Expect `diagnostics: []` and one entry per skill.           |
+| `pnpm payloads:build` | Every vendor adapter accepts this source. Catches a manifest name or component an adapter rejects, before it reaches a host. |
+| `pnpm lint:plugin`    | Version lockstep, the portable frontmatter contract, and the guard against content adapters would silently drop.             |
+| `pnpm test`           | The validator itself behaves — every failure mode covered, plus an assertion that this repository validates.                 |
+
+`pnpm payloads:verify` recompiles into a temporary directory and compares, so it checks that
+compilation is deterministic. CI runs it after `payloads:build` for that reason.
 
 ## Guardrails
 
-- **Never hand-edit `payloads/`.** It is build output. Change the portable source and run
-  `pnpm payloads:build`. `payloads:verify` exists to catch exactly this mistake.
+- **`payloads/` is gitignored build output.** Never commit it, and never hand-edit it. The plugin
+  source is the only copy of a skill in this repository; CI and the release workflow compile their
+  own.
 - **Never add files to a skill directory besides `SKILL.md`.** Adapters ship nothing else, so the
   content would be invisible at runtime while looking present in the repository. `lint:plugin` fails
   on it.
 - **Never add `commands/`, `agents/`, or `hooks/` to the plugin root.** No adapter emits them.
-- **Keep `VERSION`, `package.json`, and `plugin.json` in step**, and rebuild payloads after a version
-  bump — the payload records the version it was built from.
+- **Keep `VERSION`, `package.json`, and `plugin.json` in step.** `lint:plugin` enforces it.
 - **Bump the toolkit pin deliberately.** `TOOLKIT_REF` in `scripts/with_toolkit.sh` is what makes
   validation reproducible. Changing it can change what conformance means, so treat it as a reviewed
   change and re-run every gate afterwards.
@@ -49,8 +52,8 @@ unit tests. No toolkit checkout, so it is fast and covers every platform a contr
 on.
 
 **`conformance`** — ubuntu only. Builds the pinned toolkit (cached on the hash of
-`with_toolkit.sh`) and runs `validate`, `inspect`, and `payloads:verify`. This is the job that proves
-the template has not been deviated from.
+`with_toolkit.sh`), runs `validate` and `inspect`, then compiles the vendor payloads and checks that
+compilation is deterministic. This is the job that proves the template has not been deviated from.
 
 The release workflow runs both gate sets again before publishing, so no release can be cut from a
 repository that does not validate.
@@ -72,7 +75,8 @@ pull request:
 ## Optional extra check
 
 If the Claude Code CLI is available, its own manifest validator can be run against the compiled
-payload as an independent second opinion:
+payload as an independent second opinion. Run `pnpm payloads:build` first — `payloads/` is not
+committed:
 
 ```bash
 claude plugin validate payloads/claude/payload --strict

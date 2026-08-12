@@ -16,14 +16,22 @@ plugins/monolithic-code-review-toolkit/   portable source (hand-authored)
         │
         │  scripts/build_payloads.mjs → compileVendorPayload(source, vendor, output)
         ▼
-payloads/{claude,cursor,codex}/           generated (never hand-edited)
-├── bundle.json                           file bytes, modes, hashes, adapter identity, digests
+payloads/{claude,cursor,codex}/           generated, gitignored, rebuilt in CI
+├── bundle.json                           modes, hashes, adapter identity, digests
 └── payload/                              the installable tree for that host
 ```
 
-The portable root is the single source of truth. Vendor payloads are derived from it by the
-toolkit's own adapters, so no `.claude-plugin/`, `.cursor-plugin/`, or `.codex-plugin/` file in this
-repository is written by hand.
+The portable root is the single source of truth, and it is the **only** copy of a skill in this
+repository. Payloads are build output: gitignored, compiled on demand, and produced fresh at release
+time. Committing them would put four byte-identical copies of every `SKILL.md` under version control
+to carry eighteen lines of genuinely derived content — the three vendor manifests.
+
+This also matches the template more closely, not less. Upstream, `plugins/hello-world/` contains only
+`plugin.json` and `skills/`; payloads live inside the adapter packages that produce them, because
+proving adapter determinism is that repository's product. This repository ships no adapters, so
+payloads have no home in it.
+
+No `.claude-plugin/`, `.cursor-plugin/`, or `.codex-plugin/` file is written by hand.
 
 ## The pinned toolkit
 

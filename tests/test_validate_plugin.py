@@ -63,14 +63,6 @@ class ValidatorTestCase(unittest.TestCase):
             encoding="utf-8",
         )
         self.add_skill("review-task", "Reviews a task against its requirements.")
-        for vendor in ("claude", "cursor", "codex"):
-            payload = self.tmp / "payloads" / vendor
-            payload.mkdir(parents=True)
-            (payload / "bundle.json").write_text(
-                json.dumps({"plugin": {"name": "monolithic-code-review-toolkit",
-                                       "version": version}}),
-                encoding="utf-8",
-            )
 
     def add_skill(self, name: str, description: str, frontmatter_name: str | None = None) -> Path:
         skill_dir = self.tmp / PLUGIN_DIR / "skills" / name
@@ -124,13 +116,6 @@ class TestVersionLockstep(ValidatorTestCase):
     def test_rejects_non_semantic_version(self) -> None:
         (self.tmp / "VERSION").write_text("v1\n", encoding="utf-8")
         self.assert_error_matching("not semantic")
-
-    def test_rejects_payload_built_from_another_version(self) -> None:
-        path = self.tmp / "payloads" / "cursor" / "bundle.json"
-        path.write_text(
-            json.dumps({"plugin": {"name": "x", "version": "0.0.9"}}), encoding="utf-8"
-        )
-        self.assert_error_matching("was built from version")
 
 
 class TestSkillContract(ValidatorTestCase):
@@ -188,10 +173,6 @@ class TestPayloadAllowlist(ValidatorTestCase):
 
 
 class TestMissingPieces(ValidatorTestCase):
-    def test_rejects_missing_payload_directory(self) -> None:
-        shutil.rmtree(self.tmp / "payloads" / "codex")
-        self.assert_error_matching("missing compiled payload")
-
     def test_rejects_repository_with_no_skills(self) -> None:
         shutil.rmtree(self.tmp / PLUGIN_DIR / "skills")
         (self.tmp / PLUGIN_DIR / "skills").mkdir()

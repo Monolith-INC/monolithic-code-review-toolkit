@@ -8,7 +8,10 @@ spec has no opinion about:
   * version lockstep across VERSION, package.json and plugin.json
   * skill frontmatter restricted to portable keys, with name == directory
   * no skill content that the adapter payload allowlist would silently drop
-  * compiled payloads present and in step with source
+
+Compiled payloads are deliberately out of scope: they are build output, not
+committed state, so there is nothing here for them to drift from. `pnpm
+payloads:build` is the gate that proves every adapter accepts this source.
 
 Usage:  python3 scripts/validate_plugin.py [repo-root]
 Exits 0 when clean, 1 with one `error: ...` line per problem on stderr.
@@ -22,7 +25,6 @@ import sys
 from pathlib import Path
 
 PLUGIN_DIR = "plugins/monolithic-code-review-toolkit"
-VENDORS = ("claude", "cursor", "codex")
 
 # The portable SKILL.md contract. Host-only keys (disable-model-invocation,
 # allowed-tools, license) are deliberately excluded: adapters do not carry them,
@@ -174,40 +176,19 @@ def check_unshippable(root: Path) -> None:
             )
 
 
-def check_payloads(root: Path, version: str | None) -> None:
-    for vendor in VENDORS:
-        payload_dir = root / "payloads" / vendor
-        if not payload_dir.is_dir():
-            fail(f"missing compiled payload: payloads/{vendor}/ (run `pnpm payloads:build`)")
-            continue
-        if not (payload_dir / "bundle.json").is_file():
-            fail(f"payloads/{vendor}/bundle.json is missing")
-            continue
-        bundle = read_json(payload_dir / "bundle.json")
-        if bundle is None or version is None:
-            continue
-        shipped = (bundle.get("plugin") or {}).get("version")
-        if shipped != version:
-            fail(
-                f"payloads/{vendor} was built from version {shipped!r}, "
-                f"expected {version!r} (run `pnpm payloads:build`)"
-            )
-
-
 def main() -> int:
     root = Path(sys.argv[1] if len(sys.argv) > 1 else ".").resolve()
 
     version = check_versions(root)
     count = check_skills(root)
     check_unshippable(root)
-    check_payloads(root, version)
 
     if errors:
         for message in errors:
             print(f"error: {message}", file=sys.stderr)
         return 1
 
-    print(f"ok: monolithic-code-review-toolkit@{version} ({count} skills, {len(VENDORS)} payloads)")
+    print(f"ok: monolithic-code-review-toolkit@{version} ({count} skills)")
     return 0
 
 

@@ -4,6 +4,12 @@ dist/
 build/
 *.tsbuildinfo
 
+# Compiled vendor payloads. Derived from plugins/*/ by `pnpm payloads:build`
+# and rebuilt in CI and at release time. In the upstream template, payloads
+# belong to the adapter packages that produce them, never to a plugin root —
+# this repository ships no adapters, so they are pure build output here.
+payloads/
+
 # Pinned toolkit checkout (cloned on demand by scripts/with_toolkit.sh)
 .toolkit/
 
@@ -44,9 +50,3 @@ AI_Codex/.codex_ledger_skip
 
 # Repo-level MCP wiring (Linear) — how this build is managed.
 !.mcp.json
-
-# Vendor overlay source and generated payloads may contain hooks/ directories.
-!vendor/
-!vendor/**
-!payloads/
-!payloads/**

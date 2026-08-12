@@ -48,5 +48,9 @@ jobs:
         run: bash scripts/with_toolkit.sh validate plugins/monolithic-code-review-toolkit
       - name: Inspect portable components
         run: bash scripts/with_toolkit.sh inspect plugins/monolithic-code-review-toolkit
-      - name: Verify vendor payloads match source
+      # Payloads are build output, not committed state. Compiling them here is
+      # the real gate: it proves every vendor adapter accepts this source.
+      - name: Compile vendor payloads
+        run: node scripts/build_payloads.mjs build
+      - name: Check compilation is deterministic
         run: node scripts/build_payloads.mjs verify

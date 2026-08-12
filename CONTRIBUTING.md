@@ -26,8 +26,11 @@ The compile step maps each skill to its `SKILL.md` body and nothing else, so:
    [ADR-0001](AI_Codex/Architecture/ADR/ADR-0001-skill-runtime-under-payload-allowlist.md).
 2. **No commands.** No adapter emits a `commands/` directory. Skills are the
    invocation surface on all three hosts.
-3. **`payloads/` is generated.** Rebuild with `pnpm payloads:build`; never edit
-   a file in it. `pnpm payloads:verify` fails CI if it drifts from source.
+3. **`payloads/` is generated and not committed.** It is gitignored, rebuilt by
+   `pnpm payloads:build`, and produced fresh in CI and at release time. The
+   plugin source is the only copy of a skill in this repository. In the upstream
+   template, payloads belong to the adapter packages that produce them, never to
+   a plugin root — this repository ships no adapters, so they have no home here.
 
 Repository tooling under `scripts/` and `tests/` never enters a payload, so it
 is free to be any language.
