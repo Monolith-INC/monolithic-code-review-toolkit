@@ -33,15 +33,30 @@ is missing so dependent skills degrade honestly instead of inventing requirement
 ```bash
 git remote get-url origin
 git branch --show-current
-gh auth status
 ```
 
-Parse `owner` and `repo` from the origin URL. This toolkit supports **GitHub** via the `gh` CLI. If
-`origin` is not GitHub, stop and tell the user which host was found — do not guess an equivalent API.
+Identify the provider from the origin URL, then inspect the provider-specific tools actually
+available in the session (MCP tools, a first-party CLI, or an authenticated API client). Do not
+assume GitHub and do not substitute a different provider because its tooling is convenient.
 
-If `gh auth status` fails, record the configuration anyway and warn that PR-side skills
-(`review-story-postflight`, `triage-pr-comments`, `respond-pr-comments`) will not work until the user
-runs `gh auth login`.
+Map the provider onto the SCM capability contract below. Record missing capabilities in
+`scm.unsupported`; a missing or unauthenticated client is a warning, not a reason to abandon the
+requirements configuration. If the origin is ambiguous, propose what was inferred and confirm it
+with the user.
+
+| Capability                 | Purpose |
+| -------------------------- | ------- |
+| `get_pull_request`         | PR metadata, refs, author, changed files |
+| `get_pull_request_diff`    | remote unified diff or equivalent changed-file patches |
+| `list_review_threads`      | review threads with status, comments, paths, and lines |
+| `list_conversation_comments` | general PR comments without line anchors |
+| `post_inline_comment`      | create a comment anchored to a changed line |
+| `post_summary_comment`     | create a general PR comment |
+| `reply_to_review_thread`   | reply to an existing review thread |
+
+Concrete values may be MCP tool names or command templates. Authentication checks are
+provider-specific: for example `gh auth status` for GitHub or `az account show` plus
+`az devops configure --list` for Azure DevOps.
 
 ### 2. Enumerate what is actually available
 
@@ -52,14 +67,14 @@ Do not assume. Check, in this order, and report what you find:
    they are what gets recorded, not a vendor label.
 2. **A local vault.** Look for `AI_Codex/`, `docs/specs/`, `.codex-workflows/`, `specs/`, or a
    comparable directory holding features, stories, or tickets. Read one file to learn the layout.
-3. **GitHub issues**, if `gh` is authenticated — always available as a fallback.
+3. **SCM work items/issues**, if the configured provider exposes them — use only as a fallback.
 
 ### 3. Propose a mapping and confirm it
 
-Present the candidate mapping to the user and **ask for confirmation before writing**. Show which
-capability resolves to which concrete tool or path, and name anything you could not satisfy. If more
-than one source is available, ask which is authoritative; a vault and a tracker often disagree, and
-the user decides which wins.
+Present both candidate mappings to the user and **ask for confirmation before writing**. Show which
+SCM and tracker capability resolves to which concrete tool, command, or path, and name anything you
+could not satisfy. If more than one requirements source is available, ask which is authoritative; a
+vault and a tracker often disagree, and the user decides which wins.
 
 ### 4. Write the configuration
 
@@ -71,7 +86,17 @@ Write `.monolithic-code-review/sources.json` in the repository root:
   "scm": {
     "provider": "github",
     "owner": "<owner>",
-    "repo": "<repo>"
+    "repo": "<repo>",
+    "capabilities": {
+      "get_pull_request": "gh pr view {pr} -R {owner}/{repo} --json title,body,baseRefName,headRefName,headRefOid,author,files",
+      "get_pull_request_diff": "gh pr diff {pr} -R {owner}/{repo}",
+      "list_review_threads": "gh api graphql ...",
+      "list_conversation_comments": "gh api repos/{owner}/{repo}/issues/{pr}/comments --paginate",
+      "post_inline_comment": "gh api repos/{owner}/{repo}/pulls/{pr}/comments ...",
+      "post_summary_comment": "gh pr comment {pr} -R {owner}/{repo} --body-file {file}",
+      "reply_to_review_thread": "gh api repos/{owner}/{repo}/pulls/{pr}/comments ..."
+    },
+    "unsupported": []
   },
   "tracker": {
     "kind": "mcp",
@@ -100,6 +125,11 @@ Write `.monolithic-code-review/sources.json` in the repository root:
 
 Field notes:
 
+- `scm.provider` — the provider detected for this repository, such as `github` or `azure-devops`.
+- `scm.capabilities` — concrete tool names or command templates for this repository's provider;
+  downstream PR skills execute these mappings instead of assuming a CLI.
+- `scm.unsupported` — SCM capabilities that could not be mapped. Dependent skills must degrade
+  honestly and must not silently use another provider.
 - `tracker.kind` — `mcp`, `cli`, `files`, or `none`.
 - `tracker.capabilities` — concrete tool names or path templates, never vendor labels. A `files`
   tracker uses path templates such as `AI_Codex/Tickets/**/{id}*.md`.
@@ -119,7 +149,21 @@ Resolve one real work item end to end through the recorded mapping and show the 
 acceptance criteria you got back. A configuration that has never successfully fetched anything is not
 a working configuration.
 
-## Provider recipes
+## SCM provider recipes
+
+Worked examples, not dependencies. Preserve the provider's native identifiers and fields in
+`scm` (for example Azure DevOps `organization` and `project`) in addition to the common fields.
+
+| Provider | Repository identity | Typical capability implementation |
+| -------- | ------------------- | --------------------------------- |
+| GitHub | `owner`, `repo` | `gh pr view`, `gh pr diff`, GraphQL review threads, and `gh api` comment endpoints |
+| Azure DevOps | `organization`, `project`, `repo` | Azure DevOps MCP tools when present; otherwise `az repos pr show` for metadata and `az devops invoke` Git Pull Request/Thread APIs for diffs, threads, comments, and replies |
+| Other | provider-native fields | available MCP tools, first-party CLI, or authenticated API command templates satisfying each SCM capability |
+
+Do not record the illustrative recipe text itself as a capability. Inspect the installed tool's
+actual command or tool signature and record an executable concrete mapping.
+
+## Requirement-source recipes
 
 Worked examples, not dependencies. An unlisted tracker works as long as the three capabilities
 resolve to something.
@@ -140,5 +184,6 @@ For file-backed sources, requirements and DoD are conventionally the `## Require
 
 - `.monolithic-code-review/sources.json` exists and parses.
 - Every capability either resolves or is listed in `unsupported`.
+- Every SCM capability either resolves or is listed in `scm.unsupported`.
 - One real work item has been fetched and shown to the user.
 - The user has confirmed the mapping and the `tag_pr_author` convention.

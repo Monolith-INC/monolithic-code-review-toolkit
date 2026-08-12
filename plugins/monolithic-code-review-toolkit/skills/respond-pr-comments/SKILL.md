@@ -32,9 +32,11 @@ Establish exactly which threads are in scope and what is being asked for on each
 change code, or both. Read back the list and the intended action before doing anything, unless the
 user has already been that specific.
 
-Read `.monolithic-code-review/sources.json` for `scm.owner` and `scm.repo`, and pass
-`-R <owner>/<repo>` on every call. You need the `thread_id` — the root comment's `databaseId` from
-`triage-pr-comments`, or from:
+Read `.monolithic-code-review/sources.json` for `scm.provider`, `scm.capabilities`, and the repository
+identity fields. You need the provider's root thread/comment identifier from
+`triage-pr-comments`, or from the configured `list_review_threads` capability. If required
+capabilities are unsupported or authentication fails, stop and name them; never fall back to a
+different SCM. For GitHub, the thread listing commonly expands to:
 
 ```bash
 gh api repos/<owner>/<repo>/pulls/<PR>/comments --paginate
@@ -56,7 +58,7 @@ Stop, explain what breaks, and propose the alternative.
 
 ### 3. Post replies
 
-Reply to the root comment of the thread:
+Reply to the root comment through `reply_to_review_thread`. For GitHub, this commonly expands to:
 
 ```bash
 gh api repos/<owner>/<repo>/pulls/<PR>/comments \
@@ -64,8 +66,8 @@ gh api repos/<owner>/<repo>/pulls/<PR>/comments \
   -F in_reply_to=<thread_id>
 ```
 
-`in_reply_to` must reference a pull **review** comment id, not an issue comment id. For a general
-conversation comment, use `gh pr comment <PR> -R <owner>/<repo> --body-file <file>` instead.
+For GitHub, `in_reply_to` must reference a pull **review** comment id, not an issue comment id. For a
+general conversation comment, use the configured `post_summary_comment` capability instead.
 
 Reply content by outcome:
 

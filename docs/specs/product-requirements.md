@@ -27,7 +27,7 @@ Four lifecycle stages, delivered as seven skills:
 
 ## Out of scope for v0.1.0
 
-- Any SCM other than GitHub.
+- Shipping a hard-coded dependency on one SCM vendor.
 - Naming or depending on a specific work-tracker vendor.
 - Executable helper code shipped inside the plugin — see
   [ADR-0001](../../AI_Codex/Architecture/ADR/ADR-0001-skill-runtime-under-payload-allowlist.md).
@@ -52,6 +52,10 @@ and asks. It never substitutes its own judgement of what the work should have do
 **R5 — Tracker independence.** No skill names a tracker vendor. All requirement access goes through
 the three-capability contract resolved by `review-setup`.
 
+**R5a — SCM independence.** The pull-request provider is selected and configured per repository.
+PR-side skills use the SCM capability mappings written by `review-setup`, never a globally assumed
+provider.
+
 **R6 — Template conformance.** The plugin is a portable Agent Plugins v1.0.0 root that passes
 `agent-plugin validate` and `inspect` with zero diagnostics, and compiles to all three vendor
 payloads. No hand-authored vendor files.
@@ -61,7 +65,7 @@ user instruction for that specific action.
 
 ## The capability contract
 
-`review-setup` resolves whatever the consuming repository uses onto three capabilities:
+`review-setup` resolves whatever the consuming repository uses onto three requirement capabilities:
 
 | Capability                  | Returns                                                     |
 | --------------------------- | ----------------------------------------------------------- |
@@ -70,6 +74,9 @@ user instruction for that specific action.
 | `list_linked_artifacts(id)` | specs, design documents, attachments, linked URLs           |
 
 Unsatisfiable capabilities are recorded in `unsupported` so dependent skills degrade honestly.
+It separately resolves the repository's PR provider onto SCM capabilities for PR metadata, diffs,
+threads, conversation comments, inline and summary comments, and thread replies. Those mappings are
+stored per repository under `scm.capabilities`.
 
 ## Feature / user story / task breakdown
 
@@ -97,6 +104,7 @@ diagnostics; all three vendor payloads compile and verify; CI enforces all of it
 - **US2.1** Capability contract definition and `sources.json` schema.
 - **US2.2** `review-setup` interview, detection, confirmation, and verification.
 - **US2.3** Provider recipes for the common trackers, as examples rather than dependencies.
+- **US2.4** Per-repository SCM provider detection and capability mapping.
 
 ### F3 — Lifecycle review skills
 

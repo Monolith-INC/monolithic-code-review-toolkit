@@ -12,15 +12,20 @@ accept and what to push back on.
 This skill **decides nothing and posts nothing**. It produces the analysis; the user makes the call.
 Acting on the outcome belongs to `respond-pr-comments`.
 
-Requires `.monolithic-code-review/sources.json` and authenticated `gh`.
+Requires `.monolithic-code-review/sources.json` and authenticated tooling for its configured SCM
+provider.
 
 ## Procedure
 
 ### 1. List every comment
 
-Read `scm.owner` and `scm.repo` from the configuration and pass `-R <owner>/<repo>` to every call.
+Read `scm.provider`, `scm.capabilities`, and the repository identity fields from the configuration.
+Execute `list_review_threads` with the PR identifier and configured repository identity. If it is
+unsupported or authentication fails, stop and name the missing capability; never fall back to a
+different SCM.
 
-Prefer GraphQL, because it exposes resolved and outdated state that REST does not:
+For GitHub, prefer a GraphQL mapping because it exposes resolved and outdated state that REST does
+not:
 
 ```bash
 gh api graphql -f query='
@@ -48,20 +53,22 @@ context.
 
 Skip threads where `isResolved` or `isOutdated` is true, and report how many you skipped.
 
-If GraphQL fails, fall back to REST and **keep only roots** — comments where `in_reply_to_id` is null.
-Without that filter every reply is miscounted as a separate thread:
+If the configured GitHub mapping uses REST, **keep only roots** — comments where `in_reply_to_id` is
+null. Without that filter every reply is miscounted as a separate thread:
 
 ```bash
 gh api repos/<owner>/<repo>/pulls/<PR>/comments --paginate
 ```
 
-Also collect general conversation comments, which carry no file anchor:
+Also execute `list_conversation_comments` when supported; these comments carry no file anchor. A
+GitHub mapping typically uses:
 
 ```bash
 gh api repos/<owner>/<repo>/issues/<PR>/comments --paginate
 ```
 
-Then get the diff, so each comment can be judged against what the code actually does:
+Then execute `get_pull_request_diff`, so each comment can be judged against what the code actually
+does. For GitHub this is typically:
 
 ```bash
 gh pr diff <PR> -R <owner>/<repo>

@@ -80,6 +80,17 @@ The extracted `payload/` is a Cursor plugin directory containing `.cursor-plugin
 
 ### Codex
 
+Install the repository as a marketplace, then install the plugin from it:
+
+```bash
+codex plugin marketplace add Monolith-INC/monolithic-code-review-toolkit
+codex plugin add monolithic-code-review-toolkit@monolithic-code-review-toolkit
+```
+
+For a local checkout, replace the GitHub repository in the first command with its local path.
+
+Alternatively, install from the compiled release payload:
+
 ```bash
 tar -xzf monolithic-code-review-toolkit-0.1.0-codex.tar.gz
 ```
@@ -109,7 +120,10 @@ repository — as examples, not dependencies. An unlisted tracker works as long 
 capabilities resolve to something. Capabilities a source cannot answer are recorded as `unsupported`
 so dependent skills degrade honestly rather than guessing.
 
-**Pull requests** are GitHub only, through the `gh` CLI.
+**Pull requests** are provider-configured per repository. `review-setup` maps the detected host onto
+SCM capabilities in `sources.json`; later skills use those mappings instead of assuming GitHub.
+GitHub and Azure DevOps are documented recipes, and other providers can be used when their tooling
+satisfies the same capability contract.
 
 ## Architecture
 

@@ -44,7 +44,10 @@ git diff $BASE...HEAD
 git log --oneline --no-merges $BASE..HEAD
 ```
 
-For a feature under review as a pull request, use the remote diff instead:
+For a feature under review as a pull request, execute the configured SCM capabilities
+`get_pull_request` and `get_pull_request_diff` instead. If either is unsupported, report that and use
+the local feature diff only after confirming the local refs represent the requested PR. For GitHub,
+the mappings commonly expand to:
 
 ```bash
 gh pr view <PR> -R <owner>/<repo> --json title,body,baseRefName,headRefOid,files

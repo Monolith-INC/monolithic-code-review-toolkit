@@ -1,0 +1,20 @@
+{
+  "name": "monolithic-code-review-toolkit",
+  "interface": {
+    "displayName": "Monolithic Code Review Toolkit"
+  },
+  "plugins": [
+    {
+      "name": "monolithic-code-review-toolkit",
+      "source": {
+        "source": "local",
+        "path": "./plugins/monolithic-code-review-toolkit"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}

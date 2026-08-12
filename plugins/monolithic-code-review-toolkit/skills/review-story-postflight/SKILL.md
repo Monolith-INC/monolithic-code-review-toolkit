@@ -11,7 +11,8 @@ comments.
 
 This skill **writes to the pull request**. Confirm with the user before posting.
 
-Requires `.monolithic-code-review/sources.json` and authenticated `gh`.
+Requires `.monolithic-code-review/sources.json` and authenticated tooling for its configured SCM
+provider.
 
 ## Stance
 
@@ -26,15 +27,11 @@ attention; spend it only where something is actually at stake.
 
 ### 1. Ingest
 
-Read `.monolithic-code-review/sources.json` for `scm.owner`, `scm.repo`, and
-`conventions.tag_pr_author`. Always pass `-R <owner>/<repo>` so a fork or multi-remote checkout
-cannot mix repositories.
-
-```bash
-gh auth status
-gh pr view <PR> -R <owner>/<repo> --json title,body,baseRefName,headRefName,author,files
-gh pr diff <PR> -R <owner>/<repo>
-```
+Read `.monolithic-code-review/sources.json` for `scm.provider`, `scm.capabilities`, the repository
+identity fields, and `conventions.tag_pr_author`. Execute the recorded `get_pull_request` and
+`get_pull_request_diff` mappings with the PR identifier. Keep the configured repository identity in
+every call so a fork or multi-remote checkout cannot mix repositories. If either capability is
+unsupported or authentication fails, stop and name that capability; never fall back to another SCM.
 
 Resolve the story through `fetch_work_item`, its feature through `fetch_parent`, and any specs or
 design documents through `list_linked_artifacts`. The pull request body is a claim about the work;
@@ -88,7 +85,8 @@ Comments follow the contract, compact:
 Prefix each with its severity and category. When `conventions.tag_pr_author` is true, `@`-mention the
 author once, in the summary comment rather than in every inline comment.
 
-Post inline comments anchored to the right line:
+Post inline comments through the recorded `post_inline_comment` capability, anchored to the changed
+line using the provider's line/thread model. For GitHub, the mapping will typically expand to:
 
 ```bash
 gh api repos/<owner>/<repo>/pulls/<PR>/comments \
@@ -99,7 +97,7 @@ gh api repos/<owner>/<repo>/pulls/<PR>/comments \
   -f side=RIGHT
 ```
 
-Get `HEAD_SHA` from `gh pr view <PR> -R <owner>/<repo> --json headRefOid`. Use `side=RIGHT` for added
+For GitHub, get `HEAD_SHA` from the configured PR metadata command. Use `side=RIGHT` for added
 and context lines, `side=LEFT` for removed lines. For a multi-line range add `-F start_line=<n>` with
 `-f start_side=RIGHT`.
 
@@ -109,7 +107,7 @@ headers before posting. If an anchor cannot be established confidently, put the 
 summary comment with a `file:line` reference in the text instead of guessing an inline position — a
 comment on the wrong line is worse than a comment in the summary.
 
-Then post one summary comment:
+Then post one summary comment through `post_summary_comment`. For GitHub this is typically:
 
 ```bash
 gh pr comment <PR> -R <owner>/<repo> --body-file <file>

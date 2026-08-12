@@ -17,6 +17,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PLUGIN_DIR = "plugins/monolithic-code-review-toolkit"
+MARKETPLACE_PATH = ".agents/plugins/marketplace.json"
 
 
 def load_validator():
@@ -59,6 +60,26 @@ class ValidatorTestCase(unittest.TestCase):
                 "schemaVersion": "1.0.0",
                 "name": "monolithic-code-review-toolkit",
                 "version": version,
+            }),
+            encoding="utf-8",
+        )
+        marketplace = self.tmp / MARKETPLACE_PATH
+        marketplace.parent.mkdir(parents=True)
+        marketplace.write_text(
+            json.dumps({
+                "name": "monolithic-code-review-toolkit",
+                "plugins": [{
+                    "name": "monolithic-code-review-toolkit",
+                    "source": {
+                        "source": "local",
+                        "path": "./plugins/monolithic-code-review-toolkit",
+                    },
+                    "policy": {
+                        "installation": "AVAILABLE",
+                        "authentication": "ON_INSTALL",
+                    },
+                    "category": "Developer Tools",
+                }],
             }),
             encoding="utf-8",
         )
@@ -116,6 +137,19 @@ class TestVersionLockstep(ValidatorTestCase):
     def test_rejects_non_semantic_version(self) -> None:
         (self.tmp / "VERSION").write_text("v1\n", encoding="utf-8")
         self.assert_error_matching("not semantic")
+
+
+class TestMarketplace(ValidatorTestCase):
+    def test_rejects_missing_marketplace(self) -> None:
+        (self.tmp / MARKETPLACE_PATH).unlink()
+        self.assert_error_matching("missing file")
+
+    def test_rejects_invalid_plugin_source(self) -> None:
+        path = self.tmp / MARKETPLACE_PATH
+        marketplace = json.loads(path.read_text(encoding="utf-8"))
+        marketplace["plugins"][0]["source"] = "./"
+        path.write_text(json.dumps(marketplace), encoding="utf-8")
+        self.assert_error_matching("plugin source")
 
 
 class TestSkillContract(ValidatorTestCase):

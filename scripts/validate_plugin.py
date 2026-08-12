@@ -6,6 +6,7 @@ checks portable-spec conformance; this checks the repository invariants the
 spec has no opinion about:
 
   * version lockstep across VERSION, package.json and plugin.json
+  * repository marketplace metadata points at the portable plugin source
   * skill frontmatter restricted to portable keys, with name == directory
   * no skill content that the adapter payload allowlist would silently drop
 
@@ -40,6 +41,7 @@ UNSHIPPABLE_DIRS = ("commands", "agents", "hooks")
 
 NAME_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$")
 SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$")
+MARKETPLACE_PATH = ".agents/plugins/marketplace.json"
 
 errors: list[str] = []
 
@@ -166,6 +168,46 @@ def check_skills(root: Path) -> int:
     return count
 
 
+def check_marketplace(root: Path) -> None:
+    marketplace = read_json(root / MARKETPLACE_PATH)
+    if marketplace is None:
+        return
+
+    plugins = marketplace.get("plugins")
+    if not isinstance(plugins, list):
+        fail(f"{MARKETPLACE_PATH}: plugins must be an array")
+        return
+
+    entry = next(
+        (item for item in plugins if item.get("name") == "monolithic-code-review-toolkit"),
+        None,
+    )
+    if entry is None:
+        fail(f"{MARKETPLACE_PATH}: missing monolithic-code-review-toolkit entry")
+        return
+
+    expected_source = {
+        "source": "local",
+        "path": "./plugins/monolithic-code-review-toolkit",
+    }
+    if entry.get("source") != expected_source:
+        fail(f"{MARKETPLACE_PATH}: plugin source must be {expected_source!r}")
+
+    policy = entry.get("policy")
+    if not isinstance(policy, dict):
+        fail(f"{MARKETPLACE_PATH}: plugin policy must be an object")
+    else:
+        if policy.get("installation") not in {
+            "NOT_AVAILABLE", "AVAILABLE", "INSTALLED_BY_DEFAULT"
+        }:
+            fail(f"{MARKETPLACE_PATH}: invalid policy.installation")
+        if policy.get("authentication") not in {"ON_INSTALL", "ON_USE"}:
+            fail(f"{MARKETPLACE_PATH}: invalid policy.authentication")
+
+    if not entry.get("category"):
+        fail(f"{MARKETPLACE_PATH}: plugin category is required")
+
+
 def check_unshippable(root: Path) -> None:
     for name in UNSHIPPABLE_DIRS:
         path = root / PLUGIN_DIR / name
@@ -180,6 +222,7 @@ def main() -> int:
     root = Path(sys.argv[1] if len(sys.argv) > 1 else ".").resolve()
 
     version = check_versions(root)
+    check_marketplace(root)
     count = check_skills(root)
     check_unshippable(root)
 

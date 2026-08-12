@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-08-12
+
+### Changed
+
+- Configure the pull-request provider per repository through an SCM capability map. Setup no longer
+  stops on non-GitHub origins, and PR-facing skills execute the recorded provider mappings instead
+  of assuming `gh`. Includes GitHub and Azure DevOps setup recipes.
+
+### Fixed
+
+- Add the repository-level Codex marketplace descriptor required by
+  `codex plugin marketplace add`.
+
 ## [0.1.0] - 2026-08-12
 
 First release. Seven code review skills covering the work lifecycle, compiled for Claude Code,
@@ -57,5 +70,6 @@ after this release:
 - Installation is host-native: payloads ship as per-host archives and load through each host's own
   mechanism.
 
-[Unreleased]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/releases/tag/v0.1.0

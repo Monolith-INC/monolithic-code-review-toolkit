@@ -50,3 +50,8 @@ AI_Codex/.codex_ledger_skip
 
 # Repo-level MCP wiring (Linear) — how this build is managed.
 !.mcp.json
+
+# Codex marketplace descriptor. This is catalog metadata, not plugin payload content.
+!.agents/
+!.agents/plugins/
+!.agents/plugins/marketplace.json
