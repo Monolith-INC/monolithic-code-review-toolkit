@@ -1,0 +1,52 @@
+# Dependencies and build output
+node_modules/
+dist/
+build/
+*.tsbuildinfo
+
+# Pinned toolkit checkout (cloned on demand by scripts/with_toolkit.sh)
+.toolkit/
+
+# Scaffolding reference material — deleted once scaffolding completes
+_reference/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Local editor / OS
+.idea/
+.vscode/
+.DS_Store
+
+# Obsidian local settings (the vault itself IS tracked, see below)
+.obsidian/
+AI_Codex/.obsidian/
+
+# ---------------------------------------------------------------------------
+# Re-include paths that the user's global excludesFile (~/.gitignore_global)
+# blocks but this repository must track. A repo .gitignore outranks
+# core.excludesFile, so these negations win.
+#
+# Blocked globally: AI_Codex/  **/.mcp.json  **/hooks/  **/.agents/
+# ---------------------------------------------------------------------------
+
+# The Agent Continuity vault holds this project's specs, features and tickets.
+# It is a deliverable (brief §6) and the local-vault fixture the skills read.
+!AI_Codex/
+!AI_Codex/**
+
+# ...except transient local ledger state. This must come *after* the negation
+# above, since the last matching pattern wins.
+AI_Codex/.codex_ledger_skip
+
+# Repo-level MCP wiring (Linear) — how this build is managed.
+!.mcp.json
+
+# Vendor overlay source and generated payloads may contain hooks/ directories.
+!vendor/
+!vendor/**
+!payloads/
+!payloads/**

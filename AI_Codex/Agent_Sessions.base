@@ -1,0 +1,19 @@
+filters:
+  and:
+    - file.inFolder("Agent_Sessions")
+    - 'file.ext == "md"'
+    - 'file.name != "README"'
+
+formulas:
+  age_days: '(now() - file.ctime).days'
+
+properties:
+  formula.age_days: { displayName: "Age (d)" }
+
+views:
+  - type: table
+    name: "Sessions"
+    order: [file.name, created, type, tags, formula.age_days]
+    sort:
+      - property: file.name
+        direction: DESC

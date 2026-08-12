@@ -1,0 +1,27 @@
+filters:
+  and:
+    - file.inFolder("Tickets")
+    - 'file.ext == "md"'
+
+formulas:
+  status: 'file.folder.replace("Tickets/", "")'
+  age_days: '(now() - file.ctime).days'
+  has_meta: 'if(type, "✅", "⚠️ no frontmatter")'
+
+properties:
+  ticket: { displayName: "#" }
+  formula.status: { displayName: Status }
+  formula.age_days: { displayName: "Age (d)" }
+  formula.has_meta: { displayName: Meta }
+
+views:
+  - type: table
+    name: "Board"
+    groupBy: { property: formula.status, direction: ASC }
+    order: [file.name, ticket, type, area, tags, formula.age_days]
+
+  - type: table
+    name: "Needs metadata"
+    filters:
+      not: [type]
+    order: [file.name, formula.status, file.mtime]

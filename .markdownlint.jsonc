@@ -1,0 +1,31 @@
+{
+  // Diagram-safe defaults for AI_Codex + toolkit docs.
+  // Mermaid → ```mermaid · ASCII → ```text · tables stay GFM pipes.
+  "default": true,
+
+  // Don't wrap/fight fences or pipe tables (ASCII/Mermaid live in fences).
+  "MD013": {
+    "line_length": 120,
+    "code_blocks": false,
+    "tables": false,
+    "headings": false
+  },
+
+  // ``` preferred; require language tags (mermaid / text / json / …).
+  "MD040": true,
+  "MD046": { "style": "fenced" },
+  "MD048": { "style": "backtick" },
+
+  // Spacing so fences/tables render cleanly.
+  "MD031": true,
+  "MD058": true,
+  // Strict pipe alignment — format tables via Markdown All in One (not markdownlint fix).
+  "MD060": { "style": "aligned", "aligned_delimiter": true },
+
+  // Vault / Obsidian ergonomics.
+  "MD024": { "siblings_only": true },
+  // Frontmatter `title:` is not an H1 — allow `# Heading` after YAML.
+  "MD025": { "front_matter_title": "" },
+  "MD033": false,
+  "MD041": false
+}

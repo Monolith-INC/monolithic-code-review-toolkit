@@ -1,0 +1,157 @@
+# Monolithic Code Review Toolkit — Product Requirements
+
+**Status:** accepted
+**Version:** 0.1.0
+**Date:** 2026-08-12
+**Source brief:** `instructions.md`
+
+## Goal
+
+Give an agent a defined review procedure for each stage of the work lifecycle, so that what gets
+reviewed is measured against **what the work was actually asked to do** — not against generic code
+quality. The unit of judgement is agreement with requirements, description, and definition of done.
+
+## Scope
+
+Four lifecycle stages, delivered as seven skills:
+
+| Stage                                     | Skill                     |
+| ----------------------------------------- | ------------------------- |
+| Configuration (once per repository)       | `review-setup`            |
+| Task done                                 | `review-task`             |
+| User story done — pre-flight              | `review-story-preflight`  |
+| User story done — post-flight             | `review-story-postflight` |
+| Feature done                              | `review-feature`          |
+| Reviewer comments received                | `triage-pr-comments`      |
+| Responding to reviewer comments           | `respond-pr-comments`     |
+
+## Out of scope for v0.1.0
+
+- Any SCM other than GitHub.
+- Naming or depending on a specific work-tracker vendor.
+- Executable helper code shipped inside the plugin — see
+  [ADR-0001](../../AI_Codex/Architecture/ADR/ADR-0001-skill-runtime-under-payload-allowlist.md).
+- Slash commands. No vendor adapter emits a `commands/` directory.
+- Approving or requesting changes on a pull request. The toolkit comments; humans decide.
+- Resolving or dismissing review threads.
+
+## Cross-cutting requirements
+
+**R1 — Comment contract.** Every finding, in every skill, in every medium, is
+**what was found → what are the consequences → what is suggested**. Compact. Posted pull-request
+comments tag the author unless the user declines.
+
+**R2 — Categories.** Findings are classified `error`, `gap`, `improvement`, or `off-scope`.
+`improvement` is admitted only when tied to the work item's own goal, never as general code polish.
+
+**R3 — Severity.** `critical`, `high`, `medium`, `low`, applied consistently across skills.
+
+**R4 — No invented requirements.** When the requirement source cannot be reached, the skill says so
+and asks. It never substitutes its own judgement of what the work should have done.
+
+**R5 — Tracker independence.** No skill names a tracker vendor. All requirement access goes through
+the three-capability contract resolved by `review-setup`.
+
+**R6 — Template conformance.** The plugin is a portable Agent Plugins v1.0.0 root that passes
+`agent-plugin validate` and `inspect` with zero diagnostics, and compiles to all three vendor
+payloads. No hand-authored vendor files.
+
+**R7 — Write actions are gated.** No skill posts to a pull request or modifies code without explicit
+user instruction for that specific action.
+
+## The capability contract
+
+`review-setup` resolves whatever the consuming repository uses onto three capabilities:
+
+| Capability                  | Returns                                                     |
+| --------------------------- | ------------------------------------------------------------ |
+| `fetch_work_item(id)`       | title, description, requirements, acceptance criteria / DoD   |
+| `fetch_parent(id)`          | parent item — task → story, story → feature                   |
+| `list_linked_artifacts(id)` | specs, design documents, attachments, linked URLs             |
+
+Unsatisfiable capabilities are recorded in `unsupported` so dependent skills degrade honestly.
+
+## Feature / user story / task breakdown
+
+Tracked in Linear on team **AGE**: project = this plugin, milestone = feature, issue = user story,
+sub-issue = task.
+
+### F1 — Template-conformant plugin foundation
+
+**Goal:** a plugin root that provably does not deviate from the template.
+**DoD:** `agent-plugin validate` returns `{"ok":true}`; `inspect` lists every skill with zero
+diagnostics; all three vendor payloads compile and verify; CI enforces all of it.
+
+- **US1.1** Portable plugin root — manifest with `schemaVersion`, `extensions` namespace, skills directory.
+- **US1.2** Pinned toolkit integration — reproducible checkout, build, and CLI invocation.
+- **US1.3** Vendor payload compilation and drift verification for claude, cursor, codex.
+- **US1.4** Repository invariant validation — version lockstep, portable frontmatter, unshippable-content guard — with unit tests and CI.
+
+### F2 — Requirement source resolution
+
+**Goal:** the toolkit works against any tracker without naming one.
+**DoD:** `review-setup` resolves all three capabilities against at least one real source, records
+`unsupported` for the rest, verifies by fetching one real work item, and persists the result.
+
+- **US2.1** Capability contract definition and `sources.json` schema.
+- **US2.2** `review-setup` interview, detection, confirmation, and verification.
+- **US2.3** Provider recipes for the common trackers, as examples rather than dependencies.
+
+### F3 — Lifecycle review skills
+
+**Goal:** review at task, story pre-flight, and feature scope against documented intent.
+**DoD:** each skill gives every requirement and DoD item an explicit verdict, reports findings in the
+R1 contract, names off-scope work, and states what it could not verify.
+
+- **US3.1** `review-task` — smallest unit, report only.
+- **US3.2** `review-story-preflight` — whole-branch, cross-task coherence, leftovers, ready/blocked verdict.
+- **US3.3** `review-feature` — agreement before quality; DoD, goal, and out-of-scope first.
+
+### F4 — Adversarial pull request review
+
+**Goal:** an adversarial review of the remote diff whose findings survive verification.
+**DoD:** findings fact-checked against current official documentation and story artifacts; unverified
+findings dropped and counted; inline comments anchored to lines the diff changes; nothing posted
+without user approval.
+
+- **US4.1** `review-story-postflight` — ingest, four-category scan, fact-check, confirm, post.
+- **US4.2** Line-anchoring procedure, with summary-comment fallback when an anchor is uncertain.
+
+### F5 — Reviewer comment handling
+
+**Goal:** treat human review comments as claims to be tested, and act only on instruction.
+**DoD:** every unresolved thread listed once with file and line and all four attributes; canvas plus
+terminal summary; `respond-pr-comments` performs no action without an explicit instruction.
+
+- **US5.1** `triage-pr-comments` — enumerate, fact-check, assign fact-check/suggestion/risk/justification.
+- **US5.2** Canvas presentation for decision-making.
+- **US5.3** `respond-pr-comments` — user-gated replies and code changes; never resolves a thread.
+
+### F6 — Documentation and release
+
+**Goal:** installable and comprehensible.
+**DoD:** README with badges and install instructions per host; CHANGELOG following Keep a Changelog;
+ADRs recorded; `_reference/` removed; v0.1.0 tagged and released with per-host payload archives.
+
+- **US6.1** README, architecture and quality-gate documentation.
+- **US6.2** CHANGELOG and release workflow.
+- **US6.3** v0.1.0 release with claude, cursor, and codex archives.
+
+## Acceptance for v0.1.0
+
+1. `pnpm validate`, `pnpm inspect`, `pnpm payloads:verify`, `pnpm lint:plugin`, `pnpm test` all pass.
+2. Seven skills discovered by the toolkit with zero diagnostics.
+3. Three vendor payloads compiled, verified, and committed.
+4. `review-setup` verified end to end against a real work item.
+5. A real pull request reviewed by `review-story-postflight` with comments landing on correct lines.
+6. `respond-pr-comments` performs no action absent an explicit instruction.
+
+## Known limitations
+
+Recorded rather than hidden, and revisited after v0.1.0:
+
+- Diff hunk parsing and comment line-anchoring are performed by the agent, not by tested code.
+  This is the weak point of ADR-0001 and the reason it carries a revisit trigger.
+- No slash-command surface on any host; skills are the only invocation surface.
+- `agent-plugin install` cannot distribute this plugin at the pinned revision, so installation is
+  host-native.

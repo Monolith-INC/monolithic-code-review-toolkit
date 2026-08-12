@@ -1,0 +1,21 @@
+{
+  "name": "monolithic-code-review-toolkit",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Code review skills for every stage of the work lifecycle: task, user story, feature, and pull request comment handling.",
+  "license": "MIT",
+  "repository": "https://github.com/Monolith-INC/monolithic-code-review-toolkit",
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@10.14.0",
+  "scripts": {
+    "toolkit": "bash scripts/with_toolkit.sh",
+    "validate": "bash scripts/with_toolkit.sh validate plugins/monolithic-code-review-toolkit",
+    "inspect": "bash scripts/with_toolkit.sh inspect plugins/monolithic-code-review-toolkit",
+    "payloads:build": "node scripts/build_payloads.mjs build",
+    "payloads:verify": "node scripts/build_payloads.mjs verify",
+    "lint:plugin": "python3 scripts/validate_plugin.py .",
+    "test": "python3 -m unittest discover -s tests -t ."
+  }
+}

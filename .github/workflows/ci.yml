@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  # Repository invariants and unit tests. Fast, no toolkit checkout needed,
+  # so it runs everywhere the plugin might be authored.
+  checks:
+    name: checks (${{ matrix.os }}, py${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Validate repository invariants
+        run: python3 scripts/validate_plugin.py .
+      - name: Run tests
+        run: python3 -m unittest discover -s tests -t . -v
+
+  # Template conformance. Builds the pinned agent-plugins-toolkit and runs its
+  # own validator and payload verifier against our plugin root — this is the
+  # gate that proves we have not deviated from the template.
+  conformance:
+    name: template conformance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Cache toolkit checkout
+        uses: actions/cache@v4
+        with:
+          path: .toolkit
+          key: toolkit-${{ hashFiles('scripts/with_toolkit.sh') }}
+      - name: Validate portable plugin root
+        run: bash scripts/with_toolkit.sh validate plugins/monolithic-code-review-toolkit
+      - name: Inspect portable components
+        run: bash scripts/with_toolkit.sh inspect plugins/monolithic-code-review-toolkit
+      - name: Verify vendor payloads match source
+        run: node scripts/build_payloads.mjs verify

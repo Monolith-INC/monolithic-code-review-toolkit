@@ -1,0 +1,24 @@
+filters:
+  and:
+    - file.inFolder("Features")
+    - 'file.ext == "md"'
+
+formulas:
+  age_days: '(now() - file.ctime).days'
+  has_meta: 'if(type, "✅", "⚠️ no frontmatter")'
+
+properties:
+  ticket: { displayName: "#" }
+  formula.has_meta: { displayName: Meta }
+
+views:
+  - type: table
+    name: "By area"
+    groupBy: { property: area, direction: ASC }
+    order: [file.name, ticket, type, stack, tags, created]
+
+  - type: table
+    name: "Needs metadata"
+    filters:
+      not: [type]
+    order: [file.name, file.mtime]
