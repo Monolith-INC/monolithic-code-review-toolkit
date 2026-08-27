@@ -1,12 +1,14 @@
 # Monolithic Code Review Toolkit — Product Requirements
 
-**Status:** accepted baseline; current release: 0.2.3
+**Status:** accepted baseline; current release: 0.2.4
 **Version:** 0.1.0 (baseline)
 **Date:** 2026-08-12
 **Source brief:** `instructions.md`
 
 ## Version history
 
+- **0.2.4** — Clarify the accepted automatic TypeScript lens trigger contract in the standalone
+  skill and lock it with a repository test.
 - **0.2.3** — One-command Cursor install via `scripts/install-cursor.sh`; README Cursor section
   simplified to a single curl pipe.
 - **0.2.2** — Mandatory TypeScript lens in lifecycle reviews for TS repos and `.ts`/`.tsx` diffs;

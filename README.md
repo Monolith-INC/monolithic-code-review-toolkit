@@ -89,7 +89,7 @@ Extract the payload into a skills directory. Claude Code discovers any folder th
 
 ```bash
 mkdir -p ~/.claude/skills/monolithic-code-review-toolkit
-tar -xzf monolithic-code-review-toolkit-0.2.3-claude.tar.gz \
+tar -xzf monolithic-code-review-toolkit-0.2.4-claude.tar.gz \
   --strip-components=1 -C ~/.claude/skills/monolithic-code-review-toolkit payload
 ```
 
@@ -110,7 +110,7 @@ Reload Cursor (**Developer → Reload Window**), then confirm **monolithic-code-
 enabled under **Customize**. On Teams/Enterprise, ensure **Allow Local Plugin Imports** is on if
 local plugins are blocked.
 
-Pin a specific release: `MCRT_VERSION=0.2.3 curl -fsSL ... | bash`. Manual install, marketplace
+Pin a specific release: `MCRT_VERSION=0.2.4 curl -fsSL ... | bash`. Manual install, marketplace
 `/add-plugin`, and contributor checkout paths are documented in
 [docs/architecture.md](docs/architecture.md).
 
@@ -128,7 +128,7 @@ For a local checkout, replace the GitHub repository in the first command with it
 Alternatively, install from the compiled release payload:
 
 ```bash
-tar -xzf monolithic-code-review-toolkit-0.2.3-codex.tar.gz
+tar -xzf monolithic-code-review-toolkit-0.2.4-codex.tar.gz
 ```
 
 The extracted `payload/` contains `.codex-plugin/plugin.json` and `skills/`. Codex also reads the

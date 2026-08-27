@@ -132,7 +132,10 @@ If there are no verified findings, say so in one line rather than inventing feed
 
 ## Constraints
 
-- Explicit invocation only; never add this lens to lifecycle review by implication.
+- Lifecycle reviews invoke this lens only when `quality_lenses.typescript` is `mandatory`, the
+  changed scope includes `.ts` or `.tsx`, or the user passes `--lenses typescript` or
+  `--lenses all`. It remains available as a standalone explicit invocation; never run it for an
+  unrelated non-TypeScript lifecycle review by implication.
 - Strictly read-only; do not modify code, files, Git state, remotes, pull requests, comments, or
   tracker records.
 - Findings target changed `.ts` or `.tsx` lines only; surrounding code supplies evidence only.

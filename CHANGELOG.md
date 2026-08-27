@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-08-27
+
+### Fixed
+
+- Align the standalone `review-typescript` skill text with the accepted automatic trigger contract:
+  lifecycle reviews invoke it when `quality_lenses.typescript` is `mandatory`, when the changed
+  scope includes `.ts` or `.tsx`, or when `--lenses typescript|all` is requested.
+
+### Added
+
+- A repository test that guards the accepted TypeScript-lens lifecycle trigger contract in
+  `skills/review-typescript/SKILL.md`.
+
 ## [0.2.3] - 2026-08-27
 
 ### Added
@@ -129,7 +142,8 @@ after this release:
 - Installation is host-native: payloads ship as per-host archives and load through each host's own
   mechanism.
 
-[Unreleased]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.2.3...HEAD
+[Unreleased]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.2.4...HEAD
+[0.2.4]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.2.0...v0.2.1

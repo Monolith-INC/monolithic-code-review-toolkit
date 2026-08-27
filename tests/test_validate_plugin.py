@@ -258,5 +258,21 @@ class TestRealRepository(unittest.TestCase):
         self.assertEqual(code, 0, f"this repository does not validate: {module.errors}")
 
 
+class TestTypeScriptLensContract(unittest.TestCase):
+    def test_lifecycle_trigger_matches_the_accepted_automatic_contract(self) -> None:
+        skill = (
+            REPO_ROOT
+            / PLUGIN_DIR
+            / "skills"
+            / "review-typescript"
+            / "SKILL.md"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("quality_lenses.typescript` is `mandatory`", skill)
+        self.assertIn("changed scope includes `.ts` or `.tsx`", skill)
+        self.assertIn("--lenses typescript", skill)
+        self.assertNotIn("Explicit invocation only", skill)
+
+
 if __name__ == "__main__":
     unittest.main()
