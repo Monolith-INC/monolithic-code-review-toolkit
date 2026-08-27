@@ -79,7 +79,47 @@ Fact-check as in `review-story-postflight`: verify library and API behaviour aga
 documentation via Context7 or web search, cite the specific DoD line behind every `gap`, and drop
 findings that do not survive.
 
-### 4. Report
+### 4. Build an attention-ordered change map when it earns its place
+
+Before detailed findings, add a change map only when the feature diff has multiple responsibilities
+or significant review noise: for example, it crosses core behavior and wiring, joins story seams
+whose relationship affects correctness, or generated/mechanical churn could hide a material change.
+Do not produce one for a single-responsibility, easy-to-follow diff merely because it touches
+multiple files.
+
+Order the map by reviewer attention, not diff order:
+
+1. **Core behavior** — algorithms, state transitions, domain rules, public contracts, and the
+   tests that establish them. Name the reviewer entry point and every relevant cross-story or
+   cross-file relationship.
+2. **Wiring and integration** — routes, dependency wiring, configuration, adapters, migrations, and
+   their relationship to the core behavior they invoke or expose.
+3. **Mechanical or generated** — formatting, renames, imports, generated files, and re-exports.
+   List paths and statistics unless a concrete risk needs more context. Never call this group safe;
+   it still needs proportionate review.
+
+Use only the aid that removes a real comprehension barrier: pseudocode when syntax or nesting hides
+the essential algorithm; a concrete before/after trace when the observable outcome is hard to
+predict; and a labeled **Risk callout** only for a subtle, breaking, concurrent, security, or
+performance-sensitive point. The map is an orientation aid, not a second diff or a finding list.
+
+### 5. Record evidence before reporting
+
+For every material agreement verdict or candidate discrepancy, create an evidence record with an
+`id`, falsifiable `claim`, `expected` requirement or invariant, decisive `evidence`, and, when
+comparing states, same-measure `baseline` and `treatment`; include `confounds` when present.
+
+| Verdict | Meaning | Disposition |
+| --- | --- | --- |
+| `VERIFIED` | Evidence supports the claim and meets its stated threshold. | `report` |
+| `NOT VERIFIED` | Evidence contradicts the claim or misses its stated threshold. | `drop` |
+| `INCONCLUSIVE` | Missing or invalid access, baseline, measurement, or environment prevents a decision. | `local-uncertainty` |
+
+Category and severity remain independent. Only `VERIFIED` discrepancies become findings. Drop
+`NOT VERIFIED` candidates. Keep `INCONCLUSIVE` claims under local uncertainty and never frame them
+as findings or warnings.
+
+### 6. Report
 
 ```text
 ## Feature review — <feature id>: <title>
@@ -93,7 +133,17 @@ findings that do not survive.
 
 VERDICT: in agreement | not in agreement — <reason>
 
-### Findings
+### Change map
+- **Core behavior** — `<entry path:line>` — reviewer entry point: <where to start>.
+  Relationship: `<story or caller>` → `<domain rule>` → `<observable result>`.
+- **Wiring and integration** — `<path>` — connects <migration, route, adapter, or configuration>
+  to <core entry point>.
+- **Mechanical or generated** — `<paths and statistics>` — <why it is present and any review risk>.
+
+Include this section only when the trigger above is met. Omit empty groups and any unneeded
+pseudocode, trace, or risk callout.
+
+### Findings (severity order: critical, high, medium, low)
 ### [critical] gap — DoD item 4 "rollback path" is not implemented
 **Found** — Migration db/migrations/014 has no down path.
 **Consequence** — A failed rollout cannot be reverted without manual surgery on production data.
@@ -105,7 +155,7 @@ Lead with the agreement section and the verdict. Findings follow. Every finding 
 
 Close with criteria **not verifiable from the diff**.
 
-### 5. Apply the outcome
+### 7. Apply the outcome
 
 The brief for this stage expects the review to end in action. After reporting, ask the user which
 findings to act on. Then, and only on their instruction:
@@ -116,6 +166,24 @@ findings to act on. Then, and only on their instruction:
   `respond-pr-comments`.
 
 Do not post or edit code from this skill without being asked to.
+
+## Manual evaluation cases
+
+- Supported claim: a feature DoD requires rollback, and the changed migration has no down path;
+  cite the DoD and migration, mark `VERIFIED`, and report the `gap` with the existing three-part
+  contract.
+- Disproved claim: a suspected story seam mismatch is contradicted by both interface definitions
+  and the integration test added by the feature; mark `NOT VERIFIED` and drop it.
+- Inaccessible evidence: production observability required by the feature cannot be inspected in
+  the available environment; mark `INCONCLUSIVE` with the missing access as a confound and retain
+  it only as local uncertainty.
+- Multi-layer fixture: one story changes entitlement rules, another wires a migration and API
+  adapter, and the client is regenerated. Produce core → wiring → mechanical groups, identify the
+  entitlement-to-adapter and migration relationships, and keep generated changes reviewable rather
+  than safe by assumption; add a trace or labeled risk callout only if the behavior is genuinely
+  hard to predict or subtle.
+- Trivial fixture: a single localized validation fix with its focused test. Omit the map,
+  pseudocode, before/after trace, and risk callout; keep any verified findings severity-ordered.
 
 ## Constraints
 

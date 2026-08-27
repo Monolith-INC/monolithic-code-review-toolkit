@@ -68,15 +68,53 @@ verification, and unverified findings are dropped rather than hedged.**
 - **Against the diff boundary.** Confirm the line you are commenting on is actually added or
   modified by this pull request.
 
-Drop anything that does not survive. State how many findings you dropped and why — that number tells
-the user how much the fact-checking is doing.
+For every material candidate, create an evidence record with an `id`, falsifiable `claim`, expected
+requirement or invariant, decisive `evidence`, and, for comparisons, same-measure `baseline` and
+`treatment`; include `confounds` when present.
 
-### 4. Confirm with the user
+| Verdict | Meaning | Disposition |
+| --- | --- | --- |
+| `VERIFIED` | Evidence supports the claim and meets its stated threshold. | `report` |
+| `NOT VERIFIED` | Evidence contradicts the claim or misses its stated threshold. | `drop` |
+| `INCONCLUSIVE` | Missing or invalid access, baseline, measurement, or environment prevents a decision. | `local-uncertainty` |
+
+Category and severity remain separate from evidence verdict. Only `VERIFIED` candidates survive to
+the user confirmation and may become inline or summary pull-request findings. Drop `NOT VERIFIED`
+claims. Keep `INCONCLUSIVE` claims only in the local uncertainty summary; never post them as
+confirmed findings or soften them into warnings. State the dropped count and reason, and the local
+uncertainty count — that shows what fact-checking could decide.
+
+### 4. Build the local preview change map when it earns its place
+
+Before detailed findings, prepare a change map only when the pull-request diff has multiple
+responsibilities or significant review noise: for example, it crosses core behavior and wiring,
+spans several layers whose relationship affects correctness, or generated/mechanical churn could
+hide a material change. Do not add one for a single-responsibility, easy-to-follow diff merely
+because it touches multiple files.
+
+Order the map by reviewer attention, not diff order:
+
+1. **Core behavior** — algorithms, state transitions, domain rules, public contracts, and the
+   tests that establish them. Name the reviewer entry point and the cross-file relationship it
+   relies on.
+2. **Wiring and integration** — routes, dependency wiring, configuration, adapters, and their
+   relationship to the core behavior they invoke.
+3. **Mechanical or generated** — formatting, renames, imports, generated files, and re-exports.
+   List paths and statistics unless a concrete risk needs more context. Never call this group safe;
+   it still needs proportionate review.
+
+Use only the aid that removes a real comprehension barrier: pseudocode when syntax or nesting hides
+the essential algorithm; a concrete before/after trace when the observable outcome is hard to
+predict; and a labeled **Risk callout** only for a subtle, breaking, concurrent, security, or
+performance-sensitive point. The map is an orientation aid, not a second diff or a finding list.
+
+### 5. Confirm with the user
 
 Show the surviving findings as a table — category, severity, `file:line`, one-line summary — and ask
-whether to post, post a subset, or hold. **Do not post without an answer.**
+whether to post, post a subset, or hold. When produced, show the change map first. Keep actual
+findings severity-ordered: critical, high, medium, then low. **Do not post without an answer.**
 
-### 5. Post
+### 6. Post
 
 Comments follow the contract, compact:
 
@@ -118,6 +156,15 @@ gh pr comment <PR> -R <owner>/<repo> --body-file <file>
 
 <one or two sentences on the change and its overall state>
 
+### Change map
+- **Core behavior** — `<entry path:line>` — reviewer entry point: <where to start>.
+  Relationship: `<caller>` → `<domain rule>` → `<observable result>`.
+- **Wiring and integration** — `<path>` — connects <dependency or route> to <core entry point>.
+- **Mechanical or generated** — `<paths and statistics>` — <why it is present and any review risk>.
+
+Include this section only when the trigger above is met. Omit empty groups and any unneeded
+pseudocode, trace, or risk callout.
+
 **Findings** — <n> total: <a> error, <b> gap, <c> improvement, <d> off-scope
 **Requirements** — <x> satisfied, <y> partial, <z> unmet
 **Verified against** — <docs and artifacts consulted>
@@ -127,9 +174,29 @@ gh pr comment <PR> -R <owner>/<repo> --body-file <file>
 Do not approve and do not request changes. This skill comments; the human review decision belongs to
 a human.
 
-### 6. Record
+Keep the summary's detailed findings in severity order: critical, high, medium, then low. Do not
+put the map in inline comments.
+
+### 7. Record
 
 Report to the user what was posted, with comment URLs.
+
+## Manual evaluation cases
+
+- Supported claim: the changed retry path returns success after a documented API error and a caller
+  treats it as completion; cite the changed line, caller, and official API contract, mark
+  `VERIFIED`, then offer the finding for user-approved posting.
+- Disproved claim: a suspected framework regression is contradicted by current official docs and
+  the actual call site; mark `NOT VERIFIED` and do not show or post it as a finding.
+- Inaccessible evidence: a production-only integration behavior cannot be measured from the PR or
+  available environment; mark `INCONCLUSIVE`, retain it only in the local uncertainty summary, and
+  never include it in the posting table or pull-request comments.
+- Multi-layer fixture: a domain retry policy, the caller that wires it, and a regenerated API client
+  change together. Show core → wiring → mechanical in the local preview and summary, identify the
+  caller-to-policy relationship, and treat a stale generated contract as reviewable risk only when
+  evidence supports it; never label generated output safe.
+- Trivial fixture: one null guard and its focused test change. Omit the map, pseudocode,
+  before/after trace, and risk callout; present any verified finding in severity order.
 
 ## Constraints
 

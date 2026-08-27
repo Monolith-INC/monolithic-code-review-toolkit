@@ -25,6 +25,9 @@ acceptance criteria, and silently dropped scope as findings in their own right.
 | Feature done                    | `review-feature`          | Agreement with goal, DoD and out-of-scope first; code quality second                        |
 | Reviewers commented             | `triage-pr-comments`       | Fact-checks every comment; presents a canvas for your decision                             |
 | Answering reviewers             | `respond-pr-comments`     | Posts replies and applies fixes — only on your explicit instruction                         |
+| PR preparation                  | `prepare-pr-for-review`   | Read-only reviewer map, evidence inventory, and gated cleanup proposals                    |
+| Explicit quality lens           | `review-maintainability`  | Read-only changed-scope structural review                                                    |
+| Explicit quality lens           | `review-typescript`       | Read-only changed-scope TypeScript boundary and invariant review                             |
 
 Skills are namespaced by plugin, so `review-task` is invoked as
 `/monolithic-code-review-toolkit:review-task`.
@@ -49,6 +52,11 @@ Three rules keep the output honest:
 - **Nothing is written without permission.** No skill posts a comment or edits code without an
   explicit instruction for that specific action.
 
+Material review claims use an evidence verdict: `VERIFIED` claims may be reported, `NOT VERIFIED`
+claims are dropped, and `INCONCLUSIVE` claims remain local uncertainty rather than softened into a
+finding. Detailed findings remain ordered by severity; larger changes may first include a concise
+map of core behavior, wiring, and mechanical/generated work.
+
 ## Install
 
 Each host gets its own compiled payload. Download the archive for your host from the
@@ -61,7 +69,7 @@ Extract the payload into a skills directory. Claude Code discovers any folder th
 
 ```bash
 mkdir -p ~/.claude/skills/monolithic-code-review-toolkit
-tar -xzf monolithic-code-review-toolkit-0.1.0-claude.tar.gz \
+tar -xzf monolithic-code-review-toolkit-0.2.0-claude.tar.gz \
   --strip-components=1 -C ~/.claude/skills/monolithic-code-review-toolkit payload
 ```
 
@@ -72,7 +80,7 @@ Restart Claude Code, or run `/reload-plugins`. The plugin loads as
 ### Cursor
 
 ```bash
-tar -xzf monolithic-code-review-toolkit-0.1.0-cursor.tar.gz
+tar -xzf monolithic-code-review-toolkit-0.2.0-cursor.tar.gz
 ```
 
 The extracted `payload/` is a Cursor plugin directory containing `.cursor-plugin/plugin.json` and
@@ -92,7 +100,7 @@ For a local checkout, replace the GitHub repository in the first command with it
 Alternatively, install from the compiled release payload:
 
 ```bash
-tar -xzf monolithic-code-review-toolkit-0.1.0-codex.tar.gz
+tar -xzf monolithic-code-review-toolkit-0.2.0-codex.tar.gz
 ```
 
 The extracted `payload/` contains `.codex-plugin/plugin.json` and `skills/`. Codex also reads the

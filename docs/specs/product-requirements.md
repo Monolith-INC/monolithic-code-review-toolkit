@@ -1,9 +1,18 @@
 # Monolithic Code Review Toolkit — Product Requirements
 
-**Status:** accepted
-**Version:** 0.1.0
+**Status:** accepted baseline; current release: 0.2.0
+**Version:** 0.1.0 (baseline)
 **Date:** 2026-08-12
 **Source brief:** `instructions.md`
+
+## Version history
+
+- **0.2.0** — Additive release: a three-state evidence contract, conditional
+  attention-ordered change maps, read-only PR preparation, explicit maintainability and TypeScript
+  lenses, and bounded user-directed remediation. The accepted 0.1.0 product scope remains intact.
+- **0.1.1** — Follow-up maintenance release. Configured pull-request providers per repository and
+  added the repository-level Codex marketplace descriptor. The accepted 0.1.0 product scope is
+  unchanged.
 
 ## Goal
 
@@ -13,9 +22,9 @@ quality. The unit of judgement is agreement with requirements, description, and 
 
 ## Scope
 
-Four lifecycle stages, delivered as seven skills:
+Four lifecycle stages plus three opt-in lenses, delivered as ten skills:
 
-| Stage                                     | Skill                     |
+| Stage / mode                              | Skill                     |
 | ----------------------------------------- | ------------------------- |
 | Configuration (once per repository)       | `review-setup`            |
 | Task done                                 | `review-task`             |
@@ -24,6 +33,9 @@ Four lifecycle stages, delivered as seven skills:
 | Feature done                              | `review-feature`          |
 | Reviewer comments received                | `triage-pr-comments`      |
 | Responding to reviewer comments           | `respond-pr-comments`     |
+| Pull request preparation (explicit)       | `prepare-pr-for-review`   |
+| Maintainability lens (explicit)           | `review-maintainability`  |
+| TypeScript lens (explicit)                | `review-typescript`       |
 
 ## Out of scope for v0.1.0
 
@@ -150,10 +162,24 @@ ADRs recorded; `_reference/` removed; v0.1.0 tagged and released with per-host p
 
 1. `pnpm validate`, `pnpm inspect`, `pnpm payloads:verify`, `pnpm lint:plugin`, `pnpm test` all pass.
 2. Seven skills discovered by the toolkit with zero diagnostics.
-3. Three vendor payloads compiled, verified, and committed.
+3. Three vendor payloads compiled, verified, and released as per-host archives. Payloads are
+   generated build output and are not committed; see [the quality gates](../quality-gates.md).
 4. `review-setup` verified end to end against a real work item.
 5. A real pull request reviewed by `review-story-postflight` with comments landing on correct lines.
 6. `respond-pr-comments` performs no action absent an explicit instruction.
+
+## Acceptance for v0.2.0
+
+1. All v0.1.0 acceptance criteria remain satisfied.
+2. Ten skills discovered by the toolkit with zero diagnostics.
+3. Lifecycle review skills share the three-state evidence verdict contract; only `VERIFIED` claims
+   become findings and `INCONCLUSIVE` claims remain local uncertainty.
+4. Story and feature reviews include conditional attention-ordered change maps; `review-task`
+   includes the same map only for multi-responsibility diffs.
+5. `prepare-pr-for-review`, `review-maintainability`, and `review-typescript` are explicitly
+   invoked, read-only skills with self-contained `SKILL.md` payloads.
+6. `respond-pr-comments` bounded remediation requires named targets, a positive maximum, and verified
+   closure evidence before success.
 
 ## Known limitations
 

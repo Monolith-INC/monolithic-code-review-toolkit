@@ -82,22 +82,37 @@ behaviour, verify against current official documentation via Context7 or web sea
 recall. Where it appeals to a project convention, find that convention in the repository and cite it,
 or note that it is not written down anywhere.
 
-Assign four attributes to each comment:
+Create an evidence record for every material reviewer claim: `id`, falsifiable `claim`, `expected`
+invariant or convention, decisive `evidence`, and, when applicable, same-measure `baseline` and
+`treatment`; include `confounds` when present. Then assign these independent attributes:
 
 | Attribute        | Values                    | Meaning                                                                    |
 | ---------------- | ------------------------- | --------------------------------------------------------------------------- |
-| **Fact-check**   | `true` / `false`          | Is the factual claim correct? Cite the evidence either way.                  |
+| **Evidence verdict** | `VERIFIED` / `NOT VERIFIED` / `INCONCLUSIVE` | Is the factual claim supported, contradicted, or undecidable? Cite the evidence. |
 | **Suggestion**   | `accept` / `decline`      | Should the requested change be made?                                         |
 | **Risk**         | `high` / `medium` / `low` | What is at stake if this comment is ignored?                                 |
-| **Justification**| free text                 | Required whenever fact-check is `false` or suggestion is `decline`.          |
+| **Justification**| free text                 | Required whenever the verdict is not `VERIFIED` or suggestion is `decline`.  |
 
-These are independent, and the interesting cases are where they diverge:
+Use the shared disposition deterministically:
 
-- **`true` + `decline`** — the reviewer is factually right, but the change is out of scope, or the
+| Evidence verdict | Disposition |
+| --- | --- |
+| `VERIFIED` | `report` |
+| `NOT VERIFIED` | `drop` |
+| `INCONCLUSIVE` | `local-uncertainty` |
+
+Only `VERIFIED` claims are eligible for a confirmed finding. `NOT VERIFIED` claims are dropped as
+findings. Keep `INCONCLUSIVE` claims visible in the local uncertainty section so the user knows the
+reviewer claim could not be decided; never present either non-verified verdict as a confirmed
+pull-request finding.
+
+The interesting cases are where evidence and suggestion diverge:
+
+- **`VERIFIED` + `decline`** — the reviewer is factually right, but the change is out of scope, or the
   cost outweighs the benefit. Justify it; this is the one the user most needs to see.
-- **`false` + `accept`** — the stated reason is wrong but the underlying instinct is sound. Say what
+- **`NOT VERIFIED` + `accept`** — the stated reason is wrong but the underlying instinct is sound. Say what
   the real reason is.
-- **`false` + `decline`** — needs the most careful justification, because it will be read as
+- **`NOT VERIFIED` + `decline`** — needs the most careful justification, because it will be read as
   defensive. Cite evidence.
 
 Risk reflects consequence, not tone. A politely-worded comment about an unhandled null in a payment
@@ -114,28 +129,48 @@ scan every comment, see the four attributes at a glance, and click through to ea
 
 Include per comment: reviewer, `file:line` (or `[general]`), the comment text, fact-check verdict with
 evidence, suggestion verdict, risk, justification, and a link to the thread. Group by risk, highest
-first. Lead with counts — total, accepted, declined, factually incorrect — and call out the
-`true + decline` and `false + decline` cases, which are the ones needing a human decision.
+first. Lead with counts — total, accepted, declined, not verified, and inconclusive — and call out
+the `VERIFIED + decline` and `NOT VERIFIED + decline` cases, which are the ones needing a human
+decision.
 
-Also print a compact terminal summary, so the user gets the shape of it without opening the canvas:
+Also print a compact terminal summary, so the user gets the shape of it without opening the canvas.
+Show local uncertainty separately rather than in the confirmed-comment list:
 
 ```text
 ## PR #<n> comment triage — <m> threads (<k> skipped: resolved/outdated)
 
-accept <a> · decline <d> · fact-check false <f>
+accept <a> · decline <d> · not verified <f> · local uncertainty <u>
 
-[high]   src/auth/token.ts:42   @reviewer   true  / accept   Expired token returned on renew failure
-[medium] src/api/orders.ts:118  @lead       true  / decline  Out of scope — belongs to AGE-41
-[low]    src/util/fmt.ts:7      @reviewer   false / decline  Claimed API deprecation; docs show current
+[high]   src/auth/token.ts:42   @reviewer   VERIFIED / accept   Expired token returned on renew failure
+[medium] src/api/orders.ts:118  @lead       VERIFIED / decline  Out of scope — belongs to AGE-41
+```
+
+### Local uncertainty
+
+```text
+[medium] src/integration/client.ts:31 @reviewer INCONCLUSIVE / decline
+Production-only behavior is inaccessible; this is not a confirmed finding.
 ```
 
 Then stop and ask what the user wants to do. **Do not reply to any thread and do not change any code
 from this skill.**
 
+## Manual evaluation cases
+
+- Supported claim: a reviewer identifies a changed null path that reaches a documented payment API
+  without a guard; cite the code and contract, mark `VERIFIED`, and show it as a confirmed triage
+  result with its independent suggestion and risk.
+- Disproved claim: a reviewer says an API is deprecated, while current official documentation and
+  the code prove the API remains supported; mark `NOT VERIFIED`, drop it as a finding, and retain
+  the evidence in the triage rationale.
+- Inaccessible evidence: a reviewer asserts a production-only timing regression that cannot be
+  measured from the PR or available environment; mark `INCONCLUSIVE` with the access confound and
+  show it only in local uncertainty, never as a confirmed finding.
+
 ## Constraints
 
 - Never resolve, dismiss, or approve a thread.
-- Every `false` fact-check and every `decline` carries a justification with evidence.
+- Every non-`VERIFIED` verdict and every `decline` carries a justification with evidence.
 - Do not soften a finding because of who wrote the comment, and do not sharpen one either.
 - Report skipped resolved and outdated threads rather than silently dropping them.
 - If a comment is ambiguous, say so and ask the user rather than guessing at intent.

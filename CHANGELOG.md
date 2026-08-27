@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-08-27
+
+### Added
+
+- Three-state evidence verdicts and conditional attention-ordered change maps in lifecycle reviews.
+- `prepare-pr-for-review`, `review-maintainability`, and `review-typescript` as explicitly invoked,
+  read-only skills.
+- An optional, explicitly requested bounded-remediation mode for `respond-pr-comments`.
+
+### Changed
+
+- Review findings now report only verified claims; disproved claims are dropped and inaccessible
+  evidence remains local uncertainty.
+
 ## [0.1.1] - 2026-08-12
 
 ### Changed
@@ -19,6 +33,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add the repository-level Codex marketplace descriptor required by
   `codex plugin marketplace add`.
+- Clarify that per-host payload archives are generated at release time and are not committed to
+  the repository.
 
 ## [0.1.0] - 2026-08-12
 
@@ -70,6 +86,7 @@ after this release:
 - Installation is host-native: payloads ship as per-host archives and load through each host's own
   mechanism.
 
-[Unreleased]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/releases/tag/v0.1.0

@@ -67,7 +67,47 @@ Then look for what the requirements did not ask for:
 Hold `improvement` to a high bar. If it would apply equally to code this task never touched, it does
 not belong in this report.
 
-### 4. Report
+### 4. Build an attention-ordered change map when it earns its place
+
+Before detailed findings, add a change map only when the diff has multiple responsibilities or
+significant review noise: for example, it crosses core behavior and wiring, spans several layers
+whose relationship affects correctness, or generated/mechanical churn could hide a material change.
+Do not produce one for a single-responsibility, easy-to-follow diff merely because it touches
+multiple files.
+
+Order the map by reviewer attention, not diff order:
+
+1. **Core behavior** — algorithms, state transitions, domain rules, public contracts, and the
+   tests that establish them. Name the reviewer entry point and the cross-file relationship it
+   relies on.
+2. **Wiring and integration** — routes, dependency wiring, configuration, adapters, and their
+   relationship to the core behavior they invoke.
+3. **Mechanical or generated** — formatting, renames, imports, generated files, and re-exports.
+   List paths and statistics unless a concrete risk needs more context. Never call this group safe;
+   it still needs proportionate review.
+
+Use only the aid that removes a real comprehension barrier: pseudocode when syntax or nesting hides
+the essential algorithm; a concrete before/after trace when the observable outcome is hard to
+predict; and a labeled **Risk callout** only for a subtle, breaking, concurrent, security, or
+performance-sensitive point. The map is an orientation aid, not a second diff or a finding list.
+
+### 5. Record evidence before reporting
+
+Treat every material discrepancy and criterion verdict as an evidence record: `id`, falsifiable
+`claim`, `expected` requirement or invariant, decisive `evidence`, and (when applicable)
+`baseline`, `treatment`, and `confounds`. Give it one verdict and disposition:
+
+| Verdict | Meaning | Disposition |
+| --- | --- | --- |
+| `VERIFIED` | Evidence supports the claim and meets its stated threshold. | `report` |
+| `NOT VERIFIED` | Evidence contradicts the claim or misses its stated threshold. | `drop` |
+| `INCONCLUSIVE` | Missing or invalid access, baseline, measurement, or environment prevents a decision. | `local-uncertainty` |
+
+Category and severity are independent of this verdict. Only `VERIFIED` discrepancies become
+findings. Keep `INCONCLUSIVE` records in the local uncertainty section; do not present them as
+findings or soften them into warnings.
+
+### 6. Report
 
 Report only what you found. **If there are no discrepancies, say so in one line and stop** — do not
 manufacture findings to justify the review.
@@ -94,6 +134,15 @@ Format:
 
 <n> finding(s). Requirements: <x> satisfied, <y> partial, <z> unmet.
 
+### Change map
+- **Core behavior** — `<entry path:line>` — reviewer entry point: <where to start>.
+  Relationship: `<caller>` → `<domain rule>` → `<observable result>`.
+- **Wiring and integration** — `<path>` — connects <dependency or route> to <core entry point>.
+- **Mechanical or generated** — `<paths and statistics>` — <why it is present and any review risk>.
+
+Include this section only when the trigger above is met. Omit empty groups and any unneeded
+pseudocode, trace, or risk callout.
+
 ### [high] error — src/auth/token.ts:42
 **Found** — Refresh path returns the expired token when `renew()` throws.
 **Consequence** — Callers treat the failure as success; sessions silently outlive revocation.
@@ -101,7 +150,21 @@ Format:
 ```
 
 Close with the criteria that are **not verifiable from the diff**, so the user knows what the review
-did not cover.
+did not cover, and list local uncertainty records separately.
+
+## Manual evaluation cases
+
+- Supported claim: a changed line returns an expired token on a documented `renew()` failure path;
+  record the caller trace and requirement as evidence, mark `VERIFIED`, and report the existing
+  `Found → Consequence → Suggested` finding.
+- Disproved claim: a suspected missing validation is already enforced by the changed parser and its
+  focused test; mark `NOT VERIFIED` and omit it from findings.
+- Inaccessible evidence: a DoD requires deployment configuration that is unavailable in the diff or
+  repository; mark `INCONCLUSIVE` with the missing access as a confound and list it only under local
+  uncertainty.
+- Multi-responsibility diff: a task touches core behavior, wiring, and generated output; produce the
+  three-group change map with reviewer entry points before findings.
+- Trivial diff: a single-responsibility change in one module; omit the change map entirely.
 
 ## Constraints
 

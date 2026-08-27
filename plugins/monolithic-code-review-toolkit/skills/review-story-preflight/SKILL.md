@@ -75,7 +75,47 @@ Then run the pre-flight checks that are specific to this gate:
 - **Verification evidence** — do tests, migrations, or docs the DoD requires actually exist in the
   diff? Run the project's test command if one is discoverable, and report the real result.
 
-### 4. Report
+### 4. Build an attention-ordered change map when it earns its place
+
+Before detailed findings, add a change map only when the diff has multiple responsibilities or
+significant review noise: for example, it crosses core behavior and wiring, spans several layers
+whose relationship affects correctness, or generated/mechanical churn could hide a material change.
+Do not produce one for a single-responsibility, easy-to-follow diff merely because it touches
+multiple files.
+
+Order the map by reviewer attention, not diff order:
+
+1. **Core behavior** — algorithms, state transitions, domain rules, public contracts, and the
+   tests that establish them. Name the reviewer entry point and the cross-file relationship it
+   relies on.
+2. **Wiring and integration** — routes, dependency wiring, configuration, adapters, and their
+   relationship to the core behavior they invoke.
+3. **Mechanical or generated** — formatting, renames, imports, generated files, and re-exports.
+   List paths and statistics unless a concrete risk needs more context. Never call this group safe;
+   it still needs proportionate review.
+
+Use only the aid that removes a real comprehension barrier: pseudocode when syntax or nesting hides
+the essential algorithm; a concrete before/after trace when the observable outcome is hard to
+predict; and a labeled **Risk callout** only for a subtle, breaking, concurrent, security, or
+performance-sensitive point. The map is an orientation aid, not a second diff or a finding list.
+
+### 5. Record evidence before reporting
+
+For every material criterion verdict or candidate discrepancy, create an evidence record with an
+`id`, falsifiable `claim`, `expected` requirement or invariant, decisive `evidence`, and, where a
+comparison is made, the same-measure `baseline` and `treatment`; record `confounds` when present.
+
+| Verdict | Meaning | Disposition |
+| --- | --- | --- |
+| `VERIFIED` | Evidence supports the claim and meets its stated threshold. | `report` |
+| `NOT VERIFIED` | Evidence contradicts the claim or misses its stated threshold. | `drop` |
+| `INCONCLUSIVE` | Missing or invalid access, baseline, measurement, or environment prevents a decision. | `local-uncertainty` |
+
+Category and severity remain separate from evidence verdict. Only `VERIFIED` discrepancies become
+findings. Keep `INCONCLUSIVE` records in a local uncertainty section, never as findings or softened
+warnings.
+
+### 6. Report
 
 Same three-part contract:
 
@@ -91,6 +131,16 @@ Requirements: <x> satisfied, <y> partial, <z> unmet. DoD: <a>/<b> met.
 
 VERDICT: ready for pull request | blocked by <n> finding(s)
 
+### Change map
+- **Core behavior** — `<entry path:line>` — reviewer entry point: <where to start>.
+  Relationship: `<caller>` → `<domain rule>` → `<observable result>`.
+- **Wiring and integration** — `<path>` — connects <dependency or route> to <core entry point>.
+- **Mechanical or generated** — `<paths and statistics>` — <why it is present and any review risk>.
+
+Include this section only when the trigger above is met. Omit empty groups and any unneeded
+pseudocode, trace, or risk callout.
+
+### Findings (severity order: critical, high, medium, low)
 ### [high] gap — no migration for the new column
 **Found** — `orders.status` is read in src/orders/repo.ts:88 but no migration adds it.
 **Consequence** — Deploy fails on any environment whose schema predates this branch.
@@ -101,6 +151,21 @@ End with an explicit verdict line. "Ready for pull request" means every DoD item
 critical or high finding is open. Anything less is blocked, and the report says by what.
 
 Close with criteria **not verifiable from the diff**.
+
+## Manual evaluation cases
+
+- Supported claim: a branch reads a new database column while its full migration set contains no
+  migration adding it; cite both, mark `VERIFIED`, and report the `gap` finding.
+- Disproved claim: a suspected cross-task regression is contradicted by the current caller and the
+  branch test covering the earlier behavior; mark `NOT VERIFIED` and drop it.
+- Inaccessible evidence: the DoD requires a CI-only deployment proof that cannot be accessed from
+  the branch; mark `INCONCLUSIVE` with unavailable CI evidence as a confound and keep it local.
+- Multi-layer fixture: a new domain validation rule, its HTTP route wiring, and a regenerated client
+  each change. Produce core → wiring → mechanical groups, name the route-to-rule relationship, and
+  flag a stale generated contract only if evidence supports it; do not call the generated output
+  safe merely because it is generated.
+- Trivial fixture: one self-contained boundary correction with its focused test. Omit the map,
+  pseudocode, before/after trace, and risk callout; report any verified finding in severity order.
 
 ## Constraints
 

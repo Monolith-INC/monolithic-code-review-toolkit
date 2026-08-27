@@ -24,6 +24,43 @@ That means:
 There will be back and forth across several rounds. Each round needs its own instruction. If the
 instruction is ambiguous about which threads it covers or whether to post, **ask before acting**.
 
+## Optional bounded iterative remediation
+
+Use this mode only when the user explicitly requests **iterative remediation** and names the target
+finding or review-comment identifiers. It is not the default response to accepted comments.
+
+Before starting, confirm all of the following:
+
+- The user explicitly requested iterative remediation, not a single response round.
+- Every target has a named finding or root review-comment identifier and an approved action.
+- The maximum iteration count is a positive integer. Use **3** when the user did not specify it.
+
+Do not start when the instruction omits target identifiers or iterative-remediation intent; ask for
+the missing information. Reject zero, negative, non-numeric, and unlimited maximums. Do not add a
+hook, background process, scheduled continuation, or any other autonomous loop.
+
+Keep cycle state in the active conversation by default. Persist it only after the user separately
+approves the specific write and location; this approval does not authorize code changes, replies,
+or any other action beyond the approved persistence.
+
+For each iteration, record a checkpoint containing:
+
+- iteration number and declared maximum;
+- every target identifier;
+- changed paths;
+- focused verification commands and actual results;
+- re-review result and targets still remaining.
+
+Then apply only the approved changes for the named open targets, run focused verification, and
+re-review the changed scope against each target. Treat a target as closed only with `VERIFIED`
+closure evidence that the requested remedy is present and its concrete consequence is addressed.
+If verification fails or is inconclusive, leave the target open and record why.
+
+Stop immediately with success only when **every** named target has verified closure evidence. If the
+maximum is reached with any target open, stop and report the remaining identifiers, their latest
+evidence, and the completed iteration count. Do not claim completion or success. A later attempt
+requires a new explicit user instruction; it does not continue autonomously.
+
 ## Procedure
 
 ### 1. Confirm the instruction
@@ -85,6 +122,19 @@ Write for the reviewer, not for the record. Compact, specific, no padding.
 Tell the user exactly what was posted and what was changed, with comment URLs and file paths. Name
 any thread that was in scope but could not be handled, and why.
 
+## Manual evaluation cases
+
+- **Unable to start:** the user asks to “keep fixing review feedback” but supplies neither named
+  targets nor an explicit iterative-remediation instruction. Ask for both; make no changes, posts,
+  persistence writes, or cycle checkpoint.
+- **Verified success:** targets `RC-18` and `RC-21` have approved actions and a maximum of 3. After
+  iteration 2, focused tests pass and re-review supplies verified closure evidence for both. Record
+  both checkpoints and report success with the two target identifiers and evidence.
+- **Maximum exhaustion:** targets `RC-18` and `RC-21` have a maximum of 2. After iteration 2,
+  `RC-18` is verified closed but `RC-21` still fails focused verification. Stop, report `RC-21` and
+  its failure evidence as remaining, and do not claim success or continue without a new explicit
+  instruction.
+
 ## Constraints
 
 - **Never resolve, dismiss, or approve a thread.** Marking a conversation resolved is the reviewer's
@@ -95,6 +145,9 @@ any thread that was in scope but could not be handled, and why.
 - Report test failures faithfully rather than working around them.
 - If new comments arrive mid-task, report them and stop. They are a new round and need a new
   instruction.
+- Iterative remediation requires named targets, explicit instruction, and a positive bounded
+  maximum; unlimited and autonomous continuation are prohibited.
+- Persisted iterative state needs separate user approval.
 
 ## Success criteria
 
@@ -103,3 +156,5 @@ any thread that was in scope but could not be handled, and why.
 - No thread resolved, dismissed, or approved.
 - Code changes limited to what was accepted, with real test results reported.
 - The user knows exactly what was posted, what changed, and what was left.
+- Iterative success is reported only when every named target has `VERIFIED` closure evidence;
+  maximum exhaustion reports remaining targets without a success claim.
