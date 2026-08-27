@@ -48,9 +48,14 @@ jobs:
             tar -czf "dist/monolithic-code-review-toolkit-${VERSION}-${vendor}.tar.gz" \
               -C "payloads/${vendor}" payload bundle.json
           done
-          tar -czf "dist/monolithic-code-review-toolkit-${VERSION}-codex-review-orchestrator.tar.gz" \
+          # --exclude: the test steps above import these modules, so __pycache__
+          # exists by now. tar does not honour .gitignore, and shipping one
+          # runner's bytecode helps nobody.
+          tar --exclude='__pycache__' \
+            -czf "dist/monolithic-code-review-toolkit-${VERSION}-codex-review-orchestrator.tar.gz" \
             adapters/codex
-          tar -czf "dist/monolithic-code-review-toolkit-${VERSION}-claude-review-orchestrator.tar.gz" \
+          tar --exclude='__pycache__' \
+            -czf "dist/monolithic-code-review-toolkit-${VERSION}-claude-review-orchestrator.tar.gz" \
             adapters/claude
           ls -la dist
 
