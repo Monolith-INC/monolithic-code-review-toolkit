@@ -43,9 +43,9 @@ A reviewer-comprehension model that orders a change set by attention value inste
 
 ### Ralph Loop
 
-Fontes: `plugins/ralph-loop/README.md`, `plugins/ralph-loop/skills/ralph-loop/SKILL.md`, `plugins/ralph-loop/hooks/hooks.json`, `plugins/ralph-loop/hooks/capture-response.sh` e `plugins/ralph-loop/hooks/stop-hook.sh`
+Sources: `plugins/ralph-loop/README.md`, `plugins/ralph-loop/skills/ralph-loop/SKILL.md`, `plugins/ralph-loop/hooks/hooks.json`, `plugins/ralph-loop/hooks/capture-response.sh`, and `plugins/ralph-loop/hooks/stop-hook.sh`
 
-Padrão de iteração orientado a hooks e recuperável (estado persistido no repositório). Verifica um marcador exato de conclusão após cada resposta, reemite o prompt inalterado ao fim do turno, aplica um teto opcional de iterações e interrompe com segurança quando o estado é inválido. O padrão pode sustentar ciclos limitados de revisão ou remediação com checkpoints explícitos. O marcador de conclusão é apenas uma autoafirmação, então um toolkit de review deve exigir evidência objetiva de gate antes de considerar um ciclo concluído.
+A hook-driven, resumable iteration pattern. It persists the original prompt and iteration state in the repository, checks an exact completion marker after each response, reissues the unchanged prompt at turn end, enforces an optional iteration ceiling, and stops safely when state is invalid. The pattern can support bounded review or remediation cycles with explicit checkpoints. Its completion marker is only a self-assertion, so a review toolkit should require objective gate evidence before treating a cycle as complete.
 
 ### Verify This
 
