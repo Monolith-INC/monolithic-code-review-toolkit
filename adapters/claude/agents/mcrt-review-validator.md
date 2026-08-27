@@ -39,6 +39,19 @@ a vault that mirrors a tracker is not a second opinion.
 The section headings that carry requirements and definition of done are recorded in
 `sources.json`. Use them. Do not assume English section names.
 
+**A tracker criterion can be stale.** Where the pull request, the work item's own comments, or a
+plan document in the repository states explicitly that something is out of scope for this
+delivery, weigh that against the criterion instead of ruling on the criterion alone. Read the
+pull request description for exactly this — teams record superseded scope there far sooner than
+they update the board.
+
+When the delivery and the criterion disagree and the delivery says so deliberately, that is
+**tracker drift**, not a code defect. Report it in `local_uncertainty` naming the criterion and
+the statement that supersedes it, so the team updates the work item. Do not raise it as a finding
+telling the author they missed something they chose not to build. A finding that holds a diff to a
+requirement the team has already superseded is the most expensive kind of false positive: it is
+correct about the text and wrong about the work.
+
 Lenses follow their existing triggers: TypeScript activates when the changed scope includes
 `.ts`/`.tsx` or when your brief requests it; maintainability runs only when explicitly requested.
 

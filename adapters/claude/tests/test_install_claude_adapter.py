@@ -109,30 +109,34 @@ class SourceSubstitutionTest(unittest.TestCase):
         self.assertEqual(tools_line(poster),
                          "tools: Read, Grep, Glob, Bash, mcp__x__write, mcp__y__write")
 
-    def test_read_tools_default_to_none_on_discovery_and_validator(self):
+    def test_read_tools_default_to_none_on_read_only_workers(self):
         sources = INSTALL._load_sources(ADAPTER, [], [])
-        for name in ("mcrt-review-discovery.md", "mcrt-review-validator.md"):
+        for name in ("mcrt-review-discovery.md", "mcrt-review-validator.md",
+                     "mcrt-review-adversarial.md"):
             body = sources[f"agents/{name}"].decode("utf-8")
             self.assertNotIn(INSTALL.SCM_READ_TOOLS_PLACEHOLDER, body, name)
         self.assertEqual(tools_line(sources["agents/mcrt-review-discovery.md"]),
                          "tools: Read, Grep, Glob, Bash, Write")
 
-    def test_read_tools_reach_discovery_and_validator_only(self):
+    def test_read_tools_reach_every_read_only_worker(self):
         sources = INSTALL._load_sources(ADAPTER, ["mcp__x__write"], ["mcp__x__read"])
-        discovery = sources["agents/mcrt-review-discovery.md"].decode("utf-8")
-        validator = sources["agents/mcrt-review-validator.md"].decode("utf-8")
-        poster = sources["agents/mcrt-review-poster.md"].decode("utf-8")
-        adversarial = sources["agents/mcrt-review-adversarial.md"].decode("utf-8")
-        self.assertTrue(tools_line(discovery).endswith("Write, mcp__x__read"), tools_line(discovery))
-        self.assertTrue(tools_line(validator).endswith("Skill, mcp__x__read"), tools_line(validator))
-        self.assertNotIn("mcp__x__read", poster)
-        self.assertNotIn("mcp__x__", adversarial)
+        for name in ("mcrt-review-discovery.md", "mcrt-review-validator.md",
+                     "mcrt-review-adversarial.md"):
+            line = tools_line(sources[f"agents/{name}"])
+            self.assertTrue(line.endswith("mcp__x__read"), f"{name}: {line}")
+        # The poster is a writer; a read grant must not silently widen it.
+        self.assertNotIn("mcp__x__read", sources["agents/mcrt-review-poster.md"].decode("utf-8"))
 
     def test_write_tools_never_reach_the_read_only_workers(self):
         sources = INSTALL._load_sources(ADAPTER, ["mcp__x__write"], ["mcp__x__read"])
         for name in ("mcrt-review-discovery.md", "mcrt-review-validator.md",
                      "mcrt-review-adversarial.md"):
             self.assertNotIn("mcp__x__write", sources[f"agents/{name}"].decode("utf-8"), name)
+
+    def test_adversarial_can_be_granted_the_tracker_it_fact_checks(self):
+        sources = INSTALL._load_sources(ADAPTER, [], ["mcp__ado__wit_work_item"])
+        line = tools_line(sources["agents/mcrt-review-adversarial.md"])
+        self.assertIn("mcp__ado__wit_work_item", line)
 
     def test_every_agent_and_the_skill_are_shipped(self):
         sources = INSTALL._load_sources(ADAPTER, [], [])

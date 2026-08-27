@@ -79,8 +79,8 @@ it the poster ships with no MCP tools at all, which is the correct default: a
 worker that cannot reach a provider fails visibly instead of silently reaching
 the wrong one.
 
-`--scm-read-tool` does the same for the **read-only** workers, `discovery` and
-`validator`, and is kept separate on purpose — a write tool must never reach a
+`--scm-read-tool` does the same for the **read-only** workers — `discovery`,
+`validator` and `adversarial` — and is kept separate on purpose — a write tool must never reach a
 worker whose job is to look. Without it those two can verify only capabilities
 reachable through the shell, and will report MCP-based ones as unverified:
 
@@ -92,7 +92,10 @@ reachable through the shell, and will report MCP-based ones as unverified:
 This matters more than it looks. `discovery` is asked which SCM capabilities
 resolve; given no provider tools it cannot exercise an MCP mapping at all, and
 the honest answer is "unverified", not a guess based on something adjacent that
-happened to work.
+happened to work. `adversarial` needs them for the same reason in reverse: it
+fact-checks findings whose premises are tracker criteria and pull-request scope
+statements, and a fact-checker that cannot open the source it is checking is
+reduced to inference.
 
 ## Review input
 

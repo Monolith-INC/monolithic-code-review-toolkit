@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `--scm-read-tool` now also reaches `mcrt-review-adversarial`. The challenge
+  pass fact-checks findings whose premises are tracker criteria and pull-request
+  scope statements, and it held no provider tool, so it could not open the source
+  it was checking. Found by a real run: it declared the gap honestly and reached
+  its conclusion by another route, but inference is not verification.
+
+### Changed
+
+- The validator now weighs an explicit out-of-scope statement — in the pull
+  request description, work-item comments, or a plan document — against a
+  tracker criterion, and reports the disagreement as tracker drift in
+  `local_uncertainty` rather than as a finding against the author. Holding a
+  diff to a requirement the team has already superseded is correct about the
+  text and wrong about the work.
+- The adversarial worker is told to read primary sources where it holds the
+  tools, and to treat an unverifiable premise as grounds for `inconclusive`.
+
 ## [0.4.1] - 2026-08-27
 
 Packaging and CI only. No change to any shipped adapter, skill, or plugin file;
