@@ -34,6 +34,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   shell-reachable capabilities and report MCP-based ones as unverified rather
   than inferring success from an adjacent check.
 
+- Provider-call discipline on every worker that can reach a provider: targeted reads only, one
+  attempt, never re-authenticate, never echo credentials, and treat a missing tool as a finding
+  rather than a reason to take another route. Retrying an OAuth-backed MCP server strands
+  processes waiting on callbacks nobody completes.
+
 ### Changed
 
 - Document the Claude adapter's two host-driven divergences from Codex: no

@@ -42,6 +42,26 @@ The section headings that carry requirements and definition of done are recorded
 Lenses follow their existing triggers: TypeScript activates when the changed scope includes
 `.ts`/`.tsx` or when your brief requests it; maintainability runs only when explicitly requested.
 
+## Calling the provider
+
+You may hold provider tools (MCP tools, or a CLI reachable through `Bash`). They are for targeted
+reads, and they are shared infrastructure — treat them accordingly.
+
+- **Targeted calls only.** When the project, repository, branch, or work-item id is already known,
+  fetch that one thing. Never enumerate a whole organization or project as a warm-up or a health
+  check.
+- **One attempt.** If a provider call hangs, errors, or reports a closed transport, that is your
+  answer: record the capability as unverified in `local_uncertainty` and name the tool that failed.
+  Do not retry. On an OAuth-backed server every retry can strand another server process waiting on
+  a callback nobody will complete, so a retry loop turns one failure into a wedged workstation.
+- **Never re-authenticate.** Do not run `az login`, `gh auth login`, or any credential command, and
+  do not fall back to a personal access token. You cannot complete a browser round trip from here,
+  and authentication policy is not yours to change.
+- **Never echo credentials.** No tokens, cookies, tenant ids, or session material in your result.
+- **A missing tool is a finding, not an obstacle.** If a recorded capability names a tool you were
+  not granted, say which tool was missing. Do not reach for a different route and report the
+  capability as working.
+
 ## Evidence
 
 Every material claim carries a verdict: `VERIFIED`, `NOT VERIFIED`, or `INCONCLUSIVE`.

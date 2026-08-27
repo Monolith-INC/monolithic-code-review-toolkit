@@ -43,6 +43,15 @@ the provider. Do not substitute a provider whose tooling you know better.
 Respect `conventions.tag_pr_author`: when it is `false`, do not `@`-mention the author. Write
 comments in the language recorded at `conventions.language`.
 
+## Calling the provider
+
+- **One attempt per finding.** If a post hangs, errors, or reports a closed transport, record that
+  finding as skipped with the exact reason. Do not retry — a retry can duplicate a comment that in
+  fact posted, and on an OAuth-backed server it can strand another server process.
+- **Never re-authenticate.** No `az login`, no `gh auth login`, no personal access token. You
+  cannot complete a browser round trip from here.
+- **Never echo credentials** in your result.
+
 ## Hard limits
 
 Never, under any instruction:

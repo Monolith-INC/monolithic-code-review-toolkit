@@ -136,6 +136,26 @@ Note that Claude Code has no per-agent sandbox equivalent to Codex
 a prompt-level constraint here. The one boundary that carries real consequences
 — posting — is enforced by the hook instead.
 
+## Provider-call discipline
+
+Every worker that can reach a provider carries the same rules, because an OAuth-backed MCP server
+is shared, stateful infrastructure and a review worker is the wrong place to discover that:
+
+- Targeted reads only — never enumerate an organization or project as a health check.
+- One attempt. A hang, an error, or a closed transport is the answer: record the capability as
+  unverified and name the tool. Retrying an OAuth-backed server strands another process waiting on
+  a callback nobody will complete, turning one failure into a wedged workstation.
+- Never re-authenticate. No `az login`, no `gh auth login`, no PAT fallback. A worker cannot
+  complete a browser round trip, and auth policy is not a worker's decision.
+- A missing tool is a finding. If a recorded capability names a tool the worker was not granted,
+  it says so rather than reaching for another route and reporting success.
+
+On Claude Code a subagent granted `mcp__*` tools inherits the parent session's authenticated
+connection: no separate OAuth, no extra server process. The process-local OAuth cache binds per
+server process, and a subagent does not get one. A **cold start** is the untested case — a
+background worker as the first caller has no human watching its browser redirect, so warm the
+connection from the main session before dispatching one.
+
 ## The poster guard
 
 `hooks/mcrt_poster_guard_hook.py` is a `PreToolUse` hook that converts the
