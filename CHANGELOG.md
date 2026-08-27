@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-08-27
+
 ### Fixed
 
 - `--scm-read-tool` now also reaches `mcrt-review-adversarial`. The challenge
@@ -247,7 +249,8 @@ after this release:
 - Installation is host-native: payloads ship as per-host archives and load through each host's own
   mechanism.
 
-[Unreleased]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.4.2...HEAD
+[0.4.2]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.2.5...v0.3.0
