@@ -128,6 +128,7 @@ tags:
 - **Known failures / blockers:** Platform agent-thread limit prevented both Phase 7 worker creation and the mandatory Sol/high final independent review. This is a platform-capacity blocker, not a source or gate failure. The real-provider evaluation is an external prerequisite and was intentionally not fabricated.
 - **Quota signal:** unavailable — no authoritative seven-day quota signal is exposed in this environment.
 - **Exact next safe action:** When a worker slot is available, spawn one fresh `gpt-5.6-sol` / high reviewer with the accepted plan, feature, protocol, ADRs, complete feature diff, and gate evidence. Then act only on its verified findings. Before any commit, tag, push, release, PR comment, or provider evaluation, obtain the user’s explicit authorization and any required target/access.
+
 ## Checkpoint 2026-08-27 — Phase 7 complete; release published
 
 - **Current phase / slice:** Phase 7 — release complete (Slice G).
