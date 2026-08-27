@@ -14,15 +14,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest]
         python-version: ["3.12"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      # `python`, not `python3`: setup-python provides `python` on all three
-      # runners, but Windows has no `python3.exe` and CMD does not alias it.
+      # `python`, not `python3`: setup-python provides `python` on both runners.
       - name: Validate repository invariants
         run: python scripts/validate_plugin.py .
       - name: Run repository tests

@@ -47,7 +47,7 @@ compilation is deterministic. CI runs it after `payloads:build` for that reason.
 
 Two jobs, split by cost.
 
-**`checks`** — ubuntu, macOS, and Windows × Python 3.12. Runs `validate_plugin.py` and both unit-test
+**`checks`** — ubuntu and macOS × Python 3.12. Windows is not a shipping target and is not tested. Runs `validate_plugin.py` and both unit-test
 suites. No toolkit checkout, so it is fast and covers every supported contributor platform.
 
 **`conformance`** — ubuntu only. Builds the pinned toolkit (cached on the hash of

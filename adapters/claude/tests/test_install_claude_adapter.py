@@ -29,6 +29,19 @@ def args(project: Path, **overrides) -> Namespace:
     return Namespace(**fields)
 
 
+def tools_line(body: bytes | str) -> str:
+    """The agent's `tools:` frontmatter line, without its line ending.
+
+    Extracting the line lets each test assert the whole thing with assertEqual,
+    which catches an unexpected extra tool that a substring check would pass.
+    """
+    text = body.decode("utf-8") if isinstance(body, bytes) else body
+    for line in text.splitlines():
+        if line.startswith("tools:"):
+            return line
+    raise AssertionError("no tools: line found")
+
+
 def install(*call_args, **kwargs) -> int:
     with contextlib.redirect_stdout(io.StringIO()):
         return INSTALL.install(args(*call_args, **kwargs))
@@ -88,20 +101,21 @@ class SourceSubstitutionTest(unittest.TestCase):
     def test_poster_tools_default_to_no_mcp_tools(self):
         poster = INSTALL._load_sources(ADAPTER, [])["agents/mcrt-review-poster.md"].decode("utf-8")
         self.assertNotIn(INSTALL.SCM_TOOLS_PLACEHOLDER, poster)
-        self.assertIn("tools: Read, Grep, Glob, Bash\n", poster)
+        self.assertEqual(tools_line(poster), "tools: Read, Grep, Glob, Bash")
 
     def test_scm_tools_are_appended_to_the_poster(self):
         poster = INSTALL._load_sources(ADAPTER, ["mcp__x__write", "mcp__y__write"])[
             "agents/mcrt-review-poster.md"].decode("utf-8")
-        self.assertIn("tools: Read, Grep, Glob, Bash, mcp__x__write, mcp__y__write\n", poster)
+        self.assertEqual(tools_line(poster),
+                         "tools: Read, Grep, Glob, Bash, mcp__x__write, mcp__y__write")
 
     def test_read_tools_default_to_none_on_discovery_and_validator(self):
         sources = INSTALL._load_sources(ADAPTER, [], [])
         for name in ("mcrt-review-discovery.md", "mcrt-review-validator.md"):
             body = sources[f"agents/{name}"].decode("utf-8")
             self.assertNotIn(INSTALL.SCM_READ_TOOLS_PLACEHOLDER, body, name)
-        self.assertIn("tools: Read, Grep, Glob, Bash, Write\n",
-                      sources["agents/mcrt-review-discovery.md"].decode("utf-8"))
+        self.assertEqual(tools_line(sources["agents/mcrt-review-discovery.md"]),
+                         "tools: Read, Grep, Glob, Bash, Write")
 
     def test_read_tools_reach_discovery_and_validator_only(self):
         sources = INSTALL._load_sources(ADAPTER, ["mcp__x__write"], ["mcp__x__read"])
@@ -109,8 +123,8 @@ class SourceSubstitutionTest(unittest.TestCase):
         validator = sources["agents/mcrt-review-validator.md"].decode("utf-8")
         poster = sources["agents/mcrt-review-poster.md"].decode("utf-8")
         adversarial = sources["agents/mcrt-review-adversarial.md"].decode("utf-8")
-        self.assertIn("Write, mcp__x__read\n", discovery)
-        self.assertIn("Skill, mcp__x__read\n", validator)
+        self.assertTrue(tools_line(discovery).endswith("Write, mcp__x__read"), tools_line(discovery))
+        self.assertTrue(tools_line(validator).endswith("Skill, mcp__x__read"), tools_line(validator))
         self.assertNotIn("mcp__x__read", poster)
         self.assertNotIn("mcp__x__", adversarial)
 
