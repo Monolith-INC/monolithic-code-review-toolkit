@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-08-27
+
+Packaging and CI only. No change to any shipped adapter, skill, or plugin file;
+0.4.0's runtime and 0.4.1's are identical.
+
+### Fixed
+
+- The Codex and Claude orchestrator archives no longer carry compiled bytecode.
+  The release job runs the adapter tests before packaging, so importing those
+  modules leaves `__pycache__` behind, and `tar` does not honour `.gitignore` —
+  0.4.0 shipped 7 stray `.pyc` files in the Codex archive and 9 in the Claude
+  one, roughly doubling it. Each archive now matches its tracked tree exactly.
+  The bytecode was inert, so 0.4.0 remains usable; 0.4.1 is simply clean.
+
+### Changed
+
+- The CI matrix drops `windows-latest`. Windows is not a shipping target, so
+  testing it bought nothing and cost a red build on line-ending assertions.
+  `docs/quality-gates.md` claimed three platforms and now says two.
+
+
 ## [0.4.0] - 2026-08-27
 
 ### Added
@@ -207,7 +228,8 @@ after this release:
 - Installation is host-native: payloads ship as per-host archives and load through each host's own
   mechanism.
 
-[Unreleased]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.2.5...v0.3.0
 [0.2.5]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.2.4...v0.2.5

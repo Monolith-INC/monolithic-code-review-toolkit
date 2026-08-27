@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
   "name": "monolithic-code-review-toolkit",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Code review skills for every stage of the work lifecycle: task, user story, feature, and pull request comment handling."
 }
