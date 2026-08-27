@@ -7,6 +7,7 @@ spec has no opinion about:
 
   * version lockstep across VERSION, package.json and plugin.json
   * repository marketplace metadata points at the portable plugin source
+    (Codex `.agents/plugins/marketplace.json` and Cursor `.cursor-plugin/marketplace.json`)
   * skill frontmatter restricted to portable keys, with name == directory
   * no skill content that the adapter payload allowlist would silently drop
 
@@ -42,6 +43,8 @@ UNSHIPPABLE_DIRS = ("commands", "agents", "hooks")
 NAME_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$")
 SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$")
 MARKETPLACE_PATH = ".agents/plugins/marketplace.json"
+CURSOR_MARKETPLACE_PATH = ".cursor-plugin/marketplace.json"
+EXPECTED_CURSOR_SOURCE = "plugins/monolithic-code-review-toolkit"
 
 errors: list[str] = []
 
@@ -208,6 +211,52 @@ def check_marketplace(root: Path) -> None:
         fail(f"{MARKETPLACE_PATH}: plugin category is required")
 
 
+def check_cursor_marketplace(root: Path) -> None:
+    marketplace = read_json(root / CURSOR_MARKETPLACE_PATH)
+    if marketplace is None:
+        return
+
+    plugins = marketplace.get("plugins")
+    if not isinstance(plugins, list):
+        fail(f"{CURSOR_MARKETPLACE_PATH}: plugins must be an array")
+        return
+
+    entry = next(
+        (item for item in plugins if item.get("name") == "monolithic-code-review-toolkit"),
+        None,
+    )
+    if entry is None:
+        fail(f"{CURSOR_MARKETPLACE_PATH}: missing monolithic-code-review-toolkit entry")
+        return
+
+    source = entry.get("source")
+    if not isinstance(source, str) or not source.strip():
+        fail(f"{CURSOR_MARKETPLACE_PATH}: plugin source must be a non-empty string path")
+        return
+
+    normalized = source.removeprefix("./").strip("/")
+    if normalized.startswith("payloads/"):
+        fail(
+            f"{CURSOR_MARKETPLACE_PATH}: plugin source must not point at gitignored "
+            f"build output ({source!r})"
+        )
+
+    if normalized != EXPECTED_CURSOR_SOURCE:
+        fail(
+            f"{CURSOR_MARKETPLACE_PATH}: plugin source must be {EXPECTED_CURSOR_SOURCE!r}, "
+            f"got {source!r}"
+        )
+
+    plugin_root = (root / normalized).resolve()
+    portable_manifest = plugin_root / "plugin.json"
+    cursor_manifest = plugin_root / ".cursor-plugin" / "plugin.json"
+    if not portable_manifest.is_file() and not cursor_manifest.is_file():
+        fail(
+            f"{CURSOR_MARKETPLACE_PATH}: plugin source {source!r} has no portable plugin.json "
+            f"or .cursor-plugin/plugin.json"
+        )
+
+
 def check_unshippable(root: Path) -> None:
     for name in UNSHIPPABLE_DIRS:
         path = root / PLUGIN_DIR / name
@@ -223,6 +272,7 @@ def main() -> int:
 
     version = check_versions(root)
     check_marketplace(root)
+    check_cursor_marketplace(root)
     count = check_skills(root)
     check_unshippable(root)
 

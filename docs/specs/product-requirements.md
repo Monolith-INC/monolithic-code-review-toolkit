@@ -1,12 +1,14 @@
 # Monolithic Code Review Toolkit — Product Requirements
 
-**Status:** accepted baseline; current release: 0.2.0
+**Status:** accepted baseline; current release: 0.2.1
 **Version:** 0.1.0 (baseline)
 **Date:** 2026-08-12
 **Source brief:** `instructions.md`
 
 ## Version history
 
+- **0.2.1** — Cursor marketplace and install documentation fix. Marketplace `source` now
+  points at the committed portable plugin root; install docs name `~/.cursor/plugins/local/`.
 - **0.2.0** — Additive release: a three-state evidence contract, conditional
   attention-ordered change maps, read-only PR preparation, explicit maintainability and TypeScript
   lenses, and bounded user-directed remediation. The accepted 0.1.0 product scope remains intact.

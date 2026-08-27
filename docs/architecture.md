@@ -31,7 +31,13 @@ This also matches the template more closely, not less. Upstream, `plugins/hello-
 proving adapter determinism is that repository's product. This repository ships no adapters, so
 payloads have no home in it.
 
-No `.claude-plugin/`, `.cursor-plugin/`, or `.codex-plugin/` file is written by hand.
+No `.claude-plugin/`, `.cursor-plugin/`, or `.codex-plugin/` manifest inside a **compiled payload**
+is written by hand. Two **repository-level marketplace descriptors** are committed catalog metadata
+and are not build output:
+
+- `.cursor-plugin/marketplace.json` — Cursor team-marketplace wiring; `source` must point at the
+  portable plugin root in git, not at gitignored `payloads/`.
+- `.agents/plugins/marketplace.json` — Codex marketplace wiring with the same portable `source`.
 
 ## The pinned toolkit
 
@@ -70,7 +76,9 @@ belongs to each host. Payloads are released as per-host archives and installed t
 mechanism. For Claude Code that is skills-directory discovery: a folder containing
 `.claude-plugin/plugin.json` under `~/.claude/skills/` or `<repo>/.claude/skills/` loads as
 `<name>@skills-dir` with no marketplace and no install step — so nothing has to be hand-authored to
-make the payload installable.
+make the payload installable. For Cursor, release tarballs extract into
+`~/.cursor/plugins/local/<name>/`; GitHub marketplace installs resolve
+`.cursor-plugin/marketplace.json` against the committed portable root.
 
 ## What the portable manifest carries
 

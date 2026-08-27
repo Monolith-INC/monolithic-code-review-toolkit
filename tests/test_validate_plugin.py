@@ -18,6 +18,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PLUGIN_DIR = "plugins/monolithic-code-review-toolkit"
 MARKETPLACE_PATH = ".agents/plugins/marketplace.json"
+CURSOR_MARKETPLACE_PATH = ".cursor-plugin/marketplace.json"
 
 
 def load_validator():
@@ -79,6 +80,22 @@ class ValidatorTestCase(unittest.TestCase):
                         "authentication": "ON_INSTALL",
                     },
                     "category": "Developer Tools",
+                }],
+            }),
+            encoding="utf-8",
+        )
+        cursor_marketplace = self.tmp / CURSOR_MARKETPLACE_PATH
+        cursor_marketplace.parent.mkdir(parents=True)
+        cursor_marketplace.write_text(
+            json.dumps({
+                "name": "monolithic-code-review-toolkit",
+                "owner": {"name": "Monolith INC"},
+                "metadata": {"description": "Code review skills"},
+                "plugins": [{
+                    "name": "monolithic-code-review-toolkit",
+                    "source": "plugins/monolithic-code-review-toolkit",
+                    "description": "Reviews work against requirements.",
+                    "version": version,
                 }],
             }),
             encoding="utf-8",
@@ -150,6 +167,22 @@ class TestMarketplace(ValidatorTestCase):
         marketplace["plugins"][0]["source"] = "./"
         path.write_text(json.dumps(marketplace), encoding="utf-8")
         self.assert_error_matching("plugin source")
+
+
+class TestCursorMarketplace(ValidatorTestCase):
+    def test_rejects_gitignored_payload_source(self) -> None:
+        path = self.tmp / CURSOR_MARKETPLACE_PATH
+        marketplace = json.loads(path.read_text(encoding="utf-8"))
+        marketplace["plugins"][0]["source"] = "./payloads/cursor/payload"
+        path.write_text(json.dumps(marketplace), encoding="utf-8")
+        self.assert_error_matching("gitignored build output")
+
+    def test_rejects_wrong_portable_source(self) -> None:
+        path = self.tmp / CURSOR_MARKETPLACE_PATH
+        marketplace = json.loads(path.read_text(encoding="utf-8"))
+        marketplace["plugins"][0]["source"] = "./plugins/other-plugin"
+        path.write_text(json.dumps(marketplace), encoding="utf-8")
+        self.assert_error_matching("plugin source must be")
 
 
 class TestSkillContract(ValidatorTestCase):

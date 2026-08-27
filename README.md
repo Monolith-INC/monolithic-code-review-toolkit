@@ -69,7 +69,7 @@ Extract the payload into a skills directory. Claude Code discovers any folder th
 
 ```bash
 mkdir -p ~/.claude/skills/monolithic-code-review-toolkit
-tar -xzf monolithic-code-review-toolkit-0.2.0-claude.tar.gz \
+tar -xzf monolithic-code-review-toolkit-0.2.1-claude.tar.gz \
   --strip-components=1 -C ~/.claude/skills/monolithic-code-review-toolkit payload
 ```
 
@@ -79,12 +79,33 @@ Restart Claude Code, or run `/reload-plugins`. The plugin loads as
 
 ### Cursor
 
+Extract the payload into Cursor's local plugin directory:
+
 ```bash
-tar -xzf monolithic-code-review-toolkit-0.2.0-cursor.tar.gz
+mkdir -p ~/.cursor/plugins/local/monolithic-code-review-toolkit
+tar -xzf monolithic-code-review-toolkit-0.2.1-cursor.tar.gz \
+  --strip-components=1 -C ~/.cursor/plugins/local/monolithic-code-review-toolkit payload
 ```
 
-The extracted `payload/` is a Cursor plugin directory containing `.cursor-plugin/plugin.json` and
-`skills/`. Place it where Cursor loads plugins for your setup.
+Reload Cursor (**Developer: Reload Window**). The plugin appears under **Customize**.
+
+For a local checkout, build the Cursor payload and symlink it:
+
+```bash
+pnpm payloads:build
+ln -s "$(pwd)/payloads/cursor/payload" ~/.cursor/plugins/local/monolithic-code-review-toolkit
+```
+
+Or symlink the portable source directly (no build step): `plugins/monolithic-code-review-toolkit`.
+
+Install this repository as a Cursor marketplace, then enable the plugin from **Customize**:
+
+```text
+/add-plugin https://github.com/Monolith-INC/monolithic-code-review-toolkit
+```
+
+The marketplace manifest points at the committed portable plugin root, not gitignored build output.
+For a local checkout, use the repository path instead of the GitHub URL.
 
 ### Codex
 
@@ -100,7 +121,7 @@ For a local checkout, replace the GitHub repository in the first command with it
 Alternatively, install from the compiled release payload:
 
 ```bash
-tar -xzf monolithic-code-review-toolkit-0.2.0-codex.tar.gz
+tar -xzf monolithic-code-review-toolkit-0.2.1-codex.tar.gz
 ```
 
 The extracted `payload/` contains `.codex-plugin/plugin.json` and `skills/`. Codex also reads the
