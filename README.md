@@ -41,15 +41,16 @@ Lifecycle reviews stay requirements-first. Two optional lenses extend them when 
 | **TypeScript** | Automatically when `review-setup` marks the repo as TypeScript (`quality_lenses.typescript: mandatory`), when the diff includes `.ts`/`.tsx`, or when you pass `--lenses typescript` or `--lenses all`. |
 | **Maintainability** | Only when you pass `--lenses maintainability` or `--lenses all`, or invoke `review-maintainability` directly. Never runs silently. |
 
-Pass flags on user-invoked lifecycle skills, for example:
+Pass flags on user-invoked lifecycle skills (`review-task`, story pre/post-flight, `review-feature`):
 
 ```text
+/monolithic-code-review-toolkit:review-task --lenses maintainability
 /monolithic-code-review-toolkit:review-story-preflight --lenses maintainability
+/monolithic-code-review-toolkit:review-story-postflight --lenses all
 /monolithic-code-review-toolkit:review-feature --lenses all
 ```
 
-The agent parses these flags from your message, runs the matching lens procedures on the same
-changed scope, and merges only `VERIFIED` lens findings into a labeled subsection of the report.
+Run `review-setup` once per repository so `quality_lenses` is written to `.monolithic-code-review/sources.json`. The agent parses flags from your message, runs the matching lens procedures on the same changed scope, and merges only `VERIFIED` lens findings into a labeled subsection of the report.
 
 ## How findings are reported
 

@@ -105,6 +105,40 @@ This keeps tracker choice out of the plugin entirely. Linear appears in this rep
 `.mcp.json` because it is how *this* project is managed, and in the provider recipes as one example
 among several — never as a dependency.
 
+## Quality lenses
+
+Lifecycle reviews (`review-task`, story pre/post-flight, `review-feature`) stay requirements-first.
+Two quality lenses extend them without replacing intent checks. See
+[ADR-0002](../AI_Codex/Architecture/ADR/ADR-0002-intent-first-core-and-opt-in-quality-lenses.md)
+and the [evidence protocol](../AI_Codex/Architecture/Protocols/review-evidence-and-presentation.md).
+
+`review-setup` detects TypeScript repositories and writes `quality_lenses` into
+`.monolithic-code-review/sources.json`:
+
+```json
+"quality_lenses": {
+  "typescript": "mandatory",
+  "maintainability": "off"
+}
+```
+
+| Lens | Trigger | Skill |
+| --- | --- | --- |
+| TypeScript | `quality_lenses.typescript: mandatory`, any `.ts`/`.tsx` in the changed scope, or `--lenses typescript` / `--lenses all` | `review-typescript` |
+| Maintainability | `--lenses maintainability` / `--lenses all` only; never silent | `review-maintainability` |
+
+When a lens runs inside a lifecycle review, the agent executes the lens skill procedure on the same
+changed scope and merges only `VERIFIED` findings into a labeled report subsection. User-invoked
+lifecycle skills accept flags in the message, for example:
+
+```text
+/monolithic-code-review-toolkit:review-task --lenses maintainability
+/monolithic-code-review-toolkit:review-story-postflight --lenses all
+```
+
+Post-flight reviews run lens passes before user confirmation so lens findings appear in the approval
+table and follow the same write gate as requirements findings.
+
 ## Why the design is shaped this way
 
 The four review skills differ by scope, not by rigour setting, because the questions genuinely

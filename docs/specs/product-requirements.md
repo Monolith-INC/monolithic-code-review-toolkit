@@ -26,7 +26,7 @@ quality. The unit of judgement is agreement with requirements, description, and 
 
 ## Scope
 
-Four lifecycle stages plus three opt-in lenses, delivered as ten skills:
+Four lifecycle stages plus quality lenses and PR preparation, delivered as ten skills:
 
 | Stage / mode                              | Skill                     |
 | ----------------------------------------- | ------------------------- |
@@ -38,8 +38,12 @@ Four lifecycle stages plus three opt-in lenses, delivered as ten skills:
 | Reviewer comments received                | `triage-pr-comments`      |
 | Responding to reviewer comments           | `respond-pr-comments`     |
 | Pull request preparation (explicit)       | `prepare-pr-for-review`   |
-| Maintainability lens (explicit)           | `review-maintainability`  |
-| TypeScript lens (explicit)                | `review-typescript`       |
+| Maintainability lens (flag or standalone) | `review-maintainability`  |
+| TypeScript lens (auto, flag, or standalone) | `review-typescript`     |
+
+Lifecycle reviews accept optional `--lenses maintainability|typescript|all` flags. The TypeScript
+lens also runs automatically when `review-setup` marks the repository as TypeScript or the changed
+scope includes `.ts`/`.tsx` files. See [architecture](../architecture.md#quality-lenses).
 
 ## Out of scope for v0.1.0
 
@@ -184,6 +188,18 @@ ADRs recorded; `_reference/` removed; v0.1.0 tagged and released with per-host p
    invoked, read-only skills with self-contained `SKILL.md` payloads.
 6. `respond-pr-comments` bounded remediation requires named targets, a positive maximum, and verified
    closure evidence before success.
+
+## Acceptance for v0.2.2
+
+1. All v0.2.0 acceptance criteria remain satisfied.
+2. `review-setup` writes `quality_lenses` with TypeScript detection (`mandatory` or `off`) and
+   `maintainability: off`.
+3. Lifecycle review skills accept `--lenses maintainability|typescript|all` and document the flags in
+   their skill descriptions.
+4. The TypeScript lens runs automatically during lifecycle reviews when `quality_lenses.typescript`
+   is `mandatory` or the changed scope includes `.ts`/`.tsx` files.
+5. The maintainability lens runs only when flagged or invoked standalone; post-flight runs lens
+   passes before user confirmation.
 
 ## Known limitations
 
