@@ -1,6 +1,6 @@
 ---
 name: review-story-postflight
-description: Use after a pull request has been opened for a user story, to run an adversarial review of the remote diff against the story specs and post categorized review comments to the pull request.
+description: Use after a pull request has been opened for a user story, to run an adversarial review of the remote diff against the story specs and post categorized review comments to the pull request. Optional flags: --lenses maintainability|typescript|all.
 ---
 
 # Review Story — Post-flight
@@ -13,6 +13,37 @@ This skill **writes to the pull request**. Confirm with the user before posting.
 
 Requires `.monolithic-code-review/sources.json` and authenticated tooling for its configured SCM
 provider.
+## Review flags and quality lenses
+
+User-invoked lifecycle reviews accept optional flags in the request:
+
+| Flag | Effect |
+| --- | --- |
+| `--lenses maintainability` | Run the maintainability lens on the changed scope before reporting. |
+| `--lenses typescript` | Force the TypeScript lens even when it would not otherwise trigger. |
+| `--lenses all` | Run both maintainability and TypeScript lenses. |
+
+Parse these flags from the user's message. Maintainability never runs without an explicit flag.
+TypeScript runs when mandatory by configuration, when the changed scope includes `.ts` or `.tsx`
+files, or when forced by flag.
+
+Read `quality_lenses` from `.monolithic-code-review/sources.json` when present. After
+`review-setup`, TypeScript repositories record `quality_lenses.typescript: "mandatory"`.
+
+| Lens | Runs when |
+| --- | --- |
+| **TypeScript** | `quality_lenses.typescript` is `mandatory`, **or** the changed scope includes any `.ts`/`.tsx` file, **or** the user passed `--lenses typescript` or `--lenses all`. |
+| **Maintainability** | The user passed `--lenses maintainability` or `--lenses all` only. |
+
+When a lens triggers, execute the full read-only procedure from the matching skill
+(`review-typescript` or `review-maintainability`) on the **same changed scope** as this review.
+Merge only `VERIFIED` lens findings into this report under `### Quality lens — TypeScript` or
+`### Quality lens — Maintainability`. Use the same evidence verdicts. Do not duplicate a defect
+already reported in the requirements section — keep the requirements finding and omit the lens copy.
+
+Complete requirements-first analysis before lens passes unless a lens check is the smallest decisive
+evidence for a requirement claim.
+
 
 ## Stance
 
@@ -108,10 +139,19 @@ the essential algorithm; a concrete before/after trace when the observable outco
 predict; and a labeled **Risk callout** only for a subtle, breaking, concurrent, security, or
 performance-sensitive point. The map is an orientation aid, not a second diff or a finding list.
 
+
+### Quality lens pass (when triggered)
+
+After the change map and **before Step 5 (Confirm)**, run each triggered quality lens (see
+**Review flags and quality lenses** above). Include lens-only `VERIFIED` findings in the local
+preview under `### Quality lens — TypeScript` or `### Quality lens — Maintainability`. Only
+`VERIFIED` claims may be posted; lens findings follow the same rule as requirements findings.
+
 ### 5. Confirm with the user
 
-Show the surviving findings as a table — category, severity, `file:line`, one-line summary — and ask
-whether to post, post a subset, or hold. When produced, show the change map first. Keep actual
+Show the surviving findings — requirements and any lens findings — as a table: category, severity,
+`file:line`, one-line summary, and source (requirements or lens name). Ask whether to post, post a
+subset, or hold. When produced, show the change map first. Keep actual
 findings severity-ordered: critical, high, medium, then low. **Do not post without an answer.**
 
 ### 6. Post
@@ -176,6 +216,7 @@ a human.
 
 Keep the summary's detailed findings in severity order: critical, high, medium, then low. Do not
 put the map in inline comments.
+
 
 ### 7. Record
 

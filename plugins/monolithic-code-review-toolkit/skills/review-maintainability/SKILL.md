@@ -1,16 +1,15 @@
 ---
 name: review-maintainability
-description: Use only when a user explicitly requests a read-only maintainability review of changed code for structural simplification, ownership, atomicity, orchestration, and abstraction quality.
+description: Maintainability quality lens for changed code: structural simplification, boundary ownership, atomicity, orchestration, and abstraction. Invokable standalone or via --lenses maintainability|all on lifecycle review skills; never runs silently.
 ---
 
 # Review Maintainability
 
-Use this skill **only on explicit user invocation** for a maintainability review. It is a
+Use this skill for a maintainability review. The agent invokes it when the user passes `--lenses maintainability` or `--lenses all` on a lifecycle review, or when run standalone. It is a
 strictly read-only quality lens: it changes no source, working-tree file, Git object, index,
 remote, pull request, comment, tracker record, or persisted review state.
 
-It is not part of task, story, feature, or pull-request lifecycle review. Do not silently add this
-rubric to those reviews, and do not turn generic polish into findings. The review boundary is the
+It never runs silently during lifecycle review. When embedded, merge only `VERIFIED` findings into the parent report lens subsection. Do not turn generic polish into findings. The review boundary is the
 changed scope the user identifies or the agreed diff range; unchanged code may be read only as
 context for a changed-line finding.
 
@@ -109,7 +108,7 @@ explicit invocation.
 
 ## Constraints
 
-- Explicit invocation only; never run this lens as an implied lifecycle-review step.
+- Never run without `--lenses maintainability|all` during lifecycle review or a direct standalone request.
 - Strictly read-only; do not propose or execute mutations as part of this review.
 - Findings target changed lines only; surrounding code is context, not a target.
 - Every finding is evidence-backed, names a concrete consequence, and offers a credible remedy.

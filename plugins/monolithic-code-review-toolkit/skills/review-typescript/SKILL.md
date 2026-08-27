@@ -1,16 +1,15 @@
 ---
 name: review-typescript
-description: Use only when a user explicitly requests a read-only TypeScript review of changed .ts or .tsx code for runtime boundaries, honest types, exhaustive states, and observable failures.
+description: TypeScript quality lens for changed .ts and .tsx code: runtime boundaries, honest types, exhaustive states, and observable failures. Runs automatically in lifecycle reviews when the repository is TypeScript or the diff includes TypeScript files; also invokable standalone or via --lenses on lifecycle skills.
 ---
 
 # Review TypeScript
 
-Use this skill **only on explicit user invocation** for TypeScript review. It is a strictly
+Use this skill for TypeScript review. The agent may invoke it during lifecycle reviews when triggered by configuration, changed `.ts`/`.tsx` scope, or `--lenses` flags, or run it standalone. It is a strictly
 read-only quality lens: it changes no source, working-tree file, Git object, index, remote, pull
 request, comment, tracker record, or persisted review state.
 
-It reviews changed `.ts` and `.tsx` code only. It is not a default task, story, feature, or
-pull-request lifecycle-review step, and it does not create generic polish findings. Read unchanged
+It reviews changed `.ts` and `.tsx` code only. When embedded in a lifecycle review, merge only `VERIFIED` findings into the parent report lens subsection. Standalone runs produce a full TypeScript review report. It does not create generic polish findings. Read unchanged
 types, schemas, callers, tests, and runtime boundaries only when they are necessary evidence for a
 claim about the changed scope.
 

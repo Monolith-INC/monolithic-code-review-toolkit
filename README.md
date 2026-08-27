@@ -26,11 +26,30 @@ acceptance criteria, and silently dropped scope as findings in their own right.
 | Reviewers commented             | `triage-pr-comments`       | Fact-checks every comment; presents a canvas for your decision                             |
 | Answering reviewers             | `respond-pr-comments`     | Posts replies and applies fixes — only on your explicit instruction                         |
 | PR preparation                  | `prepare-pr-for-review`   | Read-only reviewer map, evidence inventory, and gated cleanup proposals                    |
-| Explicit quality lens           | `review-maintainability`  | Read-only changed-scope structural review                                                    |
-| Explicit quality lens           | `review-typescript`       | Read-only changed-scope TypeScript boundary and invariant review                             |
+| Quality lens (TypeScript)       | `review-typescript`       | Auto in lifecycle reviews for TS repos or `.ts`/`.tsx` diffs; standalone or `--lenses`      |
+| Quality lens (maintainability)  | `review-maintainability`  | Structural review via `--lenses maintainability|all` or standalone invocation              |
 
 Skills are namespaced by plugin, so `review-task` is invoked as
 `/monolithic-code-review-toolkit:review-task`.
+
+## Quality lenses and review flags
+
+Lifecycle reviews stay requirements-first. Two optional lenses extend them when triggered:
+
+| Lens | When it runs |
+| --- | --- |
+| **TypeScript** | Automatically when `review-setup` marks the repo as TypeScript (`quality_lenses.typescript: mandatory`), when the diff includes `.ts`/`.tsx`, or when you pass `--lenses typescript` or `--lenses all`. |
+| **Maintainability** | Only when you pass `--lenses maintainability` or `--lenses all`, or invoke `review-maintainability` directly. Never runs silently. |
+
+Pass flags on user-invoked lifecycle skills, for example:
+
+```text
+/monolithic-code-review-toolkit:review-story-preflight --lenses maintainability
+/monolithic-code-review-toolkit:review-feature --lenses all
+```
+
+The agent parses these flags from your message, runs the matching lens procedures on the same
+changed scope, and merges only `VERIFIED` lens findings into a labeled subsection of the report.
 
 ## How findings are reported
 
@@ -69,7 +88,7 @@ Extract the payload into a skills directory. Claude Code discovers any folder th
 
 ```bash
 mkdir -p ~/.claude/skills/monolithic-code-review-toolkit
-tar -xzf monolithic-code-review-toolkit-0.2.1-claude.tar.gz \
+tar -xzf monolithic-code-review-toolkit-0.2.2-claude.tar.gz \
   --strip-components=1 -C ~/.claude/skills/monolithic-code-review-toolkit payload
 ```
 
@@ -83,7 +102,7 @@ Extract the payload into Cursor's local plugin directory:
 
 ```bash
 mkdir -p ~/.cursor/plugins/local/monolithic-code-review-toolkit
-tar -xzf monolithic-code-review-toolkit-0.2.1-cursor.tar.gz \
+tar -xzf monolithic-code-review-toolkit-0.2.2-cursor.tar.gz \
   --strip-components=1 -C ~/.cursor/plugins/local/monolithic-code-review-toolkit payload
 ```
 
@@ -121,7 +140,7 @@ For a local checkout, replace the GitHub repository in the first command with it
 Alternatively, install from the compiled release payload:
 
 ```bash
-tar -xzf monolithic-code-review-toolkit-0.2.1-codex.tar.gz
+tar -xzf monolithic-code-review-toolkit-0.2.2-codex.tar.gz
 ```
 
 The extracted `payload/` contains `.codex-plugin/plugin.json` and `skills/`. Codex also reads the

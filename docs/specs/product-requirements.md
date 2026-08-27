@@ -1,12 +1,14 @@
 # Monolithic Code Review Toolkit — Product Requirements
 
-**Status:** accepted baseline; current release: 0.2.1
+**Status:** accepted baseline; current release: 0.2.2
 **Version:** 0.1.0 (baseline)
 **Date:** 2026-08-12
 **Source brief:** `instructions.md`
 
 ## Version history
 
+- **0.2.2** — Mandatory TypeScript lens in lifecycle reviews for TS repos and `.ts`/`.tsx` diffs;
+  `--lenses` flags for maintainability and TypeScript on lifecycle skills.
 - **0.2.1** — Cursor marketplace and install documentation fix. Marketplace `source` now
   points at the committed portable plugin root; install docs name `~/.cursor/plugins/local/`.
 - **0.2.0** — Additive release: a three-state evidence contract, conditional

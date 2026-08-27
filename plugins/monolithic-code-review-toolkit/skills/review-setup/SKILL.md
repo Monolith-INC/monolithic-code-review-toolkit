@@ -76,6 +76,27 @@ SCM and tracker capability resolves to which concrete tool, command, or path, an
 could not satisfy. If more than one requirements source is available, ask which is authoritative; a
 vault and a tracker often disagree, and the user decides which wins.
 
+
+### 3b. Detect quality lens defaults
+
+Determine whether this repository is a TypeScript codebase. Treat it as TypeScript when any of
+these hold at the repository root or in a primary app/package directory the user identifies:
+
+- `tsconfig.json` exists
+- `package.json` lists `typescript` in `dependencies` or `devDependencies`
+- More than a trivial fraction of tracked source files use `.ts` or `.tsx` (investigate with
+  read-only file inventory when ambiguous)
+
+Record the result in `quality_lenses.typescript`:
+
+- `mandatory` — TypeScript codebase; lifecycle reviews run the TypeScript lens when the changed
+  scope includes `.ts`/`.tsx` or when the repository default applies.
+- `off` — not a TypeScript codebase; the TypeScript lens runs only when changed scope includes
+  `.ts`/`.tsx` or the user passes `--lenses typescript`.
+
+Always write `quality_lenses.maintainability: "off"`. Maintainability runs only when the user
+passes `--lenses maintainability` or `--lenses all` on a lifecycle review.
+
 ### 4. Write the configuration
 
 Write `.monolithic-code-review/sources.json` in the repository root:
@@ -118,7 +139,11 @@ Write `.monolithic-code-review/sources.json` in the repository root:
   },
   "conventions": {
     "tag_pr_author": true,
-    "work_item_pattern": "AGE-\\d+"
+    "work_item_pattern": "AGE-\d+"
+  },
+  "quality_lenses": {
+    "typescript": "mandatory",
+    "maintainability": "off"
   }
 }
 ```
@@ -185,5 +210,6 @@ For file-backed sources, requirements and DoD are conventionally the `## Require
 - `.monolithic-code-review/sources.json` exists and parses.
 - Every capability either resolves or is listed in `unsupported`.
 - Every SCM capability either resolves or is listed in `scm.unsupported`.
+- `quality_lenses` reflects the TypeScript detection outcome.
 - One real work item has been fetched and shown to the user.
 - The user has confirmed the mapping and the `tag_pr_author` convention.

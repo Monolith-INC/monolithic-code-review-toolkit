@@ -1,6 +1,6 @@
 ---
 name: review-story-preflight
-description: Use when a user story is finished but before pushing the last commits or opening a pull request, to check the whole story branch against the story description, requirements and definition of done.
+description: Use when a user story is finished but before pushing the last commits or opening a pull request, to check the whole story branch against the story description, requirements and definition of done. Optional flags: --lenses maintainability|typescript|all.
 ---
 
 # Review Story — Pre-flight
@@ -11,6 +11,37 @@ definition of done. Nothing is pushed and nothing is posted — findings go to t
 what to fix before the PR exists.
 
 Requires `.monolithic-code-review/sources.json`. If it is missing, run `review-setup` first.
+## Review flags and quality lenses
+
+User-invoked lifecycle reviews accept optional flags in the request:
+
+| Flag | Effect |
+| --- | --- |
+| `--lenses maintainability` | Run the maintainability lens on the changed scope before reporting. |
+| `--lenses typescript` | Force the TypeScript lens even when it would not otherwise trigger. |
+| `--lenses all` | Run both maintainability and TypeScript lenses. |
+
+Parse these flags from the user's message. Maintainability never runs without an explicit flag.
+TypeScript runs when mandatory by configuration, when the changed scope includes `.ts` or `.tsx`
+files, or when forced by flag.
+
+Read `quality_lenses` from `.monolithic-code-review/sources.json` when present. After
+`review-setup`, TypeScript repositories record `quality_lenses.typescript: "mandatory"`.
+
+| Lens | Runs when |
+| --- | --- |
+| **TypeScript** | `quality_lenses.typescript` is `mandatory`, **or** the changed scope includes any `.ts`/`.tsx` file, **or** the user passed `--lenses typescript` or `--lenses all`. |
+| **Maintainability** | The user passed `--lenses maintainability` or `--lenses all` only. |
+
+When a lens triggers, execute the full read-only procedure from the matching skill
+(`review-typescript` or `review-maintainability`) on the **same changed scope** as this review.
+Merge only `VERIFIED` lens findings into this report under `### Quality lens — TypeScript` or
+`### Quality lens — Maintainability`. Use the same evidence verdicts. Do not duplicate a defect
+already reported in the requirements section — keep the requirements finding and omit the lens copy.
+
+Complete requirements-first analysis before lens passes unless a lens check is the smallest decisive
+evidence for a requirement claim.
+
 
 ## Why this is not `review-task` on a bigger diff
 
@@ -98,6 +129,13 @@ Use only the aid that removes a real comprehension barrier: pseudocode when synt
 the essential algorithm; a concrete before/after trace when the observable outcome is hard to
 predict; and a labeled **Risk callout** only for a subtle, breaking, concurrent, security, or
 performance-sensitive point. The map is an orientation aid, not a second diff or a finding list.
+
+
+### Quality lens pass (when triggered)
+
+After establishing the changed scope and before the final report, run each triggered quality lens
+(see **Review flags and quality lenses** above). Requirements-first findings stay in their section;
+lens-only `VERIFIED` findings go under the lens subsection.
 
 ### 5. Record evidence before reporting
 

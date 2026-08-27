@@ -1,9 +1,9 @@
 ---
 title: Intent-first core and opt-in quality lenses
 type: adr
-status: proposed
+status: accepted
 created: 2026-08-27
-decision-date: pending
+decision-date: 2026-08-27
 tags:
   - adr
   - code-review
@@ -15,7 +15,7 @@ tags:
 
 ## Status
 
-**Proposed.**
+**Accepted**, amended 2026-08-27.
 
 ## Context
 
@@ -23,7 +23,7 @@ The current product judges work against its documented goal, requirements, compl
 
 ## Decision
 
-Keep all lifecycle skills requirements-first. Add broad structural and TypeScript review as separately invoked, read-only skills:
+Keep all lifecycle skills requirements-first. Add broad structural and TypeScript review as read-only skills with explicit trigger rules:
 
 - `review-maintainability`
 - `review-typescript`
@@ -32,13 +32,15 @@ The lifecycle skills may still report a structural or type problem when it has a
 
 ```mermaid
 flowchart TD
-    A[Review request] --> B{Explicit quality lens?}
-    B -->|No| C[Requirements-first lifecycle review]
-    B -->|Maintainability| D[Structural quality review]
-    B -->|TypeScript| E[Type and boundary review]
-    C --> F[Shared evidence contract]
+    A[Review request] --> C[Requirements-first lifecycle review]
+    C --> G{TypeScript triggered?}
+    G -->|mandatory config or .ts/.tsx in diff or --lenses| E[TypeScript lens pass]
+    G -->|No| H{Maintainability flagged?}
+    E --> H
+    H -->|--lenses maintainability or all| D[Maintainability lens pass]
+    H -->|No| F[Shared evidence contract]
     D --> F
-    E --> F
+    C --> F
 ```
 
 File-size thresholds are investigation triggers, not automatic findings. Type advice must be validated against runtime behavior and actual invariants rather than copied from a rubric.
@@ -50,6 +52,17 @@ File-size thresholds are investigation triggers, not automatic findings. Type ad
 | Apply every rubric to every review | Maximum breadth, but violates the no-invented-requirements rule and increases noise. | Rejected |
 | Add opt-in quality skills | Preserves the core contract and makes broader judgment explicit. | Chosen |
 | Ignore the mined quality rubrics | Avoids scope risk but loses useful structural and language-specific analysis. | Rejected |
+
+
+### Amendment 2026-08-27
+
+- **TypeScript lens** runs automatically during lifecycle reviews when `quality_lenses.typescript`
+  is `mandatory` in `.monolithic-code-review/sources.json` (set by `review-setup` for TypeScript
+  codebases) or when the changed scope includes `.ts`/`.tsx` files.
+- **Maintainability lens** runs only when the user passes `--lenses maintainability` or
+  `--lenses all` on a lifecycle review, or when `review-maintainability` is invoked standalone.
+- Lifecycle review skills document the `--lenses` flags in their descriptions so agents can parse
+  user intent.
 
 ## Consequences
 

@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-08-27
+
+### Added
+
+- `--lenses maintainability|typescript|all` flags on lifecycle review skills for optional quality
+  lens passes.
+- `quality_lenses` configuration in `review-setup` with automatic TypeScript detection.
+
+### Changed
+
+- TypeScript quality lens runs automatically during lifecycle reviews for TypeScript repositories
+  or when the diff includes `.ts`/`.tsx` files.
+- Maintainability lens remains flag-gated; agents can invoke both lenses from lifecycle reviews or
+  standalone.
+
 ## [0.2.1] - 2026-08-27
 
 ### Fixed
@@ -100,7 +115,8 @@ after this release:
 - Installation is host-native: payloads ship as per-host archives and load through each host's own
   mechanism.
 
-[Unreleased]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.1.0...v0.1.1

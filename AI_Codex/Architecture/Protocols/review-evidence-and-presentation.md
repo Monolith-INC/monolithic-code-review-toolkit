@@ -1,7 +1,7 @@
 ---
 title: Review evidence and presentation protocol
 type: protocol
-status: proposed
+status: accepted
 created: 2026-08-27
 tags:
   - code-review
@@ -99,6 +99,21 @@ flowchart TD
 The checkpoint records the iteration number, maximum, target finding identifiers, changed paths, verification evidence, and remaining claims. Default maximum: three. A completion statement is valid only when every target finding has `VERIFIED` closure evidence. Reaching the maximum is a stop condition, not success.
 
 Persisting checkpoint state requires separate user approval. Without it, the state remains in the active conversation.
+
+
+## Quality lens integration
+
+Lifecycle reviews (`review-task`, story pre/post-flight, `review-feature`) remain requirements-first.
+Quality lenses extend them without replacing intent checks.
+
+| Lens | Trigger |
+| --- | --- |
+| TypeScript | `quality_lenses.typescript: mandatory` in `sources.json`, changed `.ts`/`.tsx` in scope, `--lenses typescript`, or `--lenses all`. |
+| Maintainability | `--lenses maintainability` or `--lenses all` only; never silent. |
+
+When triggered, the agent executes the matching lens skill procedure on the same changed scope and
+merges only `VERIFIED` findings into a labeled subsection of the lifecycle report. User-invoked
+lifecycle skills advertise supported flags in their skill descriptions.
 
 ## Skill mapping
 
