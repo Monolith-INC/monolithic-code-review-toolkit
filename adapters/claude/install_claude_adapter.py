@@ -26,7 +26,7 @@ SCM_READ_TOOLS_PLACEHOLDER = "__MCRT_SCM_READ_TOOLS__"
 MANUAL_SNIPPET = """{
   "hooks": {
     "PreToolUse": [
-      {"matcher": "<matcher>", "hooks": [{"type": "command", "command": "python3.12 <adapter>/hooks/mcrt_poster_guard_hook.py", "timeout": 5}]}
+      {"matcher": "<matcher>", "hooks": [{"type": "command", "command": "python3.12 <adapter>/mcrt_poster_guard_hook.py", "timeout": 5}]}
     ]
   }
 }"""
@@ -57,7 +57,7 @@ def _paths(args: argparse.Namespace) -> tuple[Path, Path, Path]:
 
 
 def hook_command(adapter_root: Path) -> str:
-    return f"python3.12 {adapter_root / 'hooks' / 'mcrt_poster_guard_hook.py'}"
+    return f"python3.12 {adapter_root / 'mcrt_poster_guard_hook.py'}"
 
 
 def _hook_entry(adapter_root: Path, matcher: str) -> dict:

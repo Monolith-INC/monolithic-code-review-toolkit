@@ -158,7 +158,7 @@ connection from the main session before dispatching one.
 
 ## The poster guard
 
-`hooks/mcrt_poster_guard_hook.py` is a `PreToolUse` hook that converts the
+`mcrt_poster_guard_hook.py` is a `PreToolUse` hook that converts the
 poster's approval rule from an instruction into an enforced boundary. The Codex
 adapter can only ask a worker not to post an unapproved finding.
 

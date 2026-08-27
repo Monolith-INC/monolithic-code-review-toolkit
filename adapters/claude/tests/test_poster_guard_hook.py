@@ -9,7 +9,7 @@ import unittest
 from pathlib import Path
 
 ADAPTER = Path(__file__).resolve().parents[1]
-HOOK_PATH = ADAPTER / "hooks" / "mcrt_poster_guard_hook.py"
+HOOK_PATH = ADAPTER / "mcrt_poster_guard_hook.py"
 
 _spec = importlib.util.spec_from_file_location("mcrt_poster_guard_hook", HOOK_PATH)
 assert _spec is not None and _spec.loader is not None
