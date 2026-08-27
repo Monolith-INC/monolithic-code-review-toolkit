@@ -25,9 +25,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `approved_finding_ids`. It covers MCP tool calls and provider CLI commands
   alike, and stays inert when no run is in flight so manual comments are
   unaffected.
-- An idempotent safe installer with `--scope`, `--dry-run`, `--uninstall`,
-  repeatable `--scm-tool` for MCP-based providers, and a surgical `settings.json`
-  edit that preserves unrelated keys and other hooks.
+- An idempotent safe installer with `--scope`, `--dry-run`, `--uninstall`, and a
+  surgical `settings.json` edit that preserves unrelated keys and other hooks.
+- Separate provider-tool flags: `--scm-tool` grants the poster its write
+  capability, and `--scm-read-tool` grants `discovery` and `validator` read-only
+  provider access. They are distinct so a write tool can never reach a worker
+  whose job is to look. Without read tools those workers verify only
+  shell-reachable capabilities and report MCP-based ones as unverified rather
+  than inferring success from an adjacent check.
 
 ### Changed
 

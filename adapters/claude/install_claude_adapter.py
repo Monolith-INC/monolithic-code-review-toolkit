@@ -22,6 +22,7 @@ RECORD_NAME = "mcrt-claude-review-adapter-install.json"
 DEFAULT_HOOK_MATCHER = "Bash|.*pull_request.*|.*pr_comment.*|.*issue_comment.*"
 ADAPTER_ROOT_PLACEHOLDER = "__MCRT_ADAPTER_ROOT__"
 SCM_TOOLS_PLACEHOLDER = "__MCRT_SCM_TOOLS__"
+SCM_READ_TOOLS_PLACEHOLDER = "__MCRT_SCM_READ_TOOLS__"
 MANUAL_SNIPPET = """{
   "hooks": {
     "PreToolUse": [
@@ -109,15 +110,20 @@ def plan_config_edit(contents: str, adapter_root: Path, matcher: str) -> ConfigE
     return ConfigEdit(action, contents, after)
 
 
-def _load_sources(adapter_root: Path, scm_tools: list[str]) -> dict[str, bytes]:
+def _load_sources(
+    adapter_root: Path, scm_tools: list[str], scm_read_tools: list[str] | None = None,
+) -> dict[str, bytes]:
     sources: dict[str, bytes] = {}
-    suffix = "".join(f", {tool}" for tool in scm_tools).encode("utf-8")
+    write_suffix = "".join(f", {tool}" for tool in scm_tools).encode("utf-8")
+    read_suffix = "".join(f", {tool}" for tool in (scm_read_tools or [])).encode("utf-8")
     for filename in AGENT_FILENAMES:
         path = adapter_root / "agents" / filename
         if not path.is_file():
             raise ValueError(f"missing adapter agent definition: {path}")
-        sources[f"agents/{filename}"] = path.read_bytes().replace(
-            SCM_TOOLS_PLACEHOLDER.encode("utf-8"), suffix,
+        sources[f"agents/{filename}"] = (
+            path.read_bytes()
+            .replace(SCM_TOOLS_PLACEHOLDER.encode("utf-8"), write_suffix)
+            .replace(SCM_READ_TOOLS_PLACEHOLDER.encode("utf-8"), read_suffix)
         )
     skill = adapter_root / "skills" / SKILL_NAME / "SKILL.md"
     if not skill.is_file():
@@ -161,7 +167,7 @@ def install(args: argparse.Namespace) -> int:
     base, config_path, record_path = _paths(args)
     adapter_root = _adapter_root()
     try:
-        sources = _load_sources(adapter_root, args.scm_tool)
+        sources = _load_sources(adapter_root, args.scm_tool, args.scm_read_tool)
         edit, record = _preflight(base, config_path, record_path, sources, adapter_root, args.matcher)
     except (OSError, ValueError, json.JSONDecodeError) as error:
         print(f"Blocked: {error}", file=sys.stderr)
@@ -171,6 +177,7 @@ def install(args: argparse.Namespace) -> int:
         print(json.dumps({
             "action": "install", "base": str(base), "files": sorted(sources),
             "config_action": edit.action, "scm_tools": args.scm_tool,
+            "scm_read_tools": args.scm_read_tool,
         }, indent=2))
         return 0
     for name, data in sources.items():
@@ -186,6 +193,9 @@ def install(args: argparse.Namespace) -> int:
     if not args.scm_tool:
         print("No --scm-tool given: the poster ships without provider MCP tools, which is correct "
               "for CLI-based providers. Add them for an MCP-based provider and reinstall.")
+    if not args.scm_read_tool:
+        print("No --scm-read-tool given: discovery and validator can verify only shell-reachable "
+              "capabilities, and will report MCP-based ones as unverified.")
     return 0
 
 
@@ -234,6 +244,13 @@ def parse_args() -> argparse.Namespace:
         "--scm-tool", action="append", default=[], metavar="TOOL",
         help="MCP tool the poster may call to write pull-request comments. Repeatable. "
              "Omit for CLI-based providers, which post through Bash.",
+    )
+    parser.add_argument(
+        "--scm-read-tool", action="append", default=[], metavar="TOOL",
+        help="Read-only MCP tool the discovery and validator workers may call to inspect pull "
+             "requests and work items. Repeatable. Without it those workers can verify only "
+             "capabilities reachable through the shell, and will report MCP-based ones as "
+             "unverified rather than guessing.",
     )
     parser.add_argument(
         "--matcher", default=DEFAULT_HOOK_MATCHER,

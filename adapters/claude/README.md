@@ -79,6 +79,21 @@ it the poster ships with no MCP tools at all, which is the correct default: a
 worker that cannot reach a provider fails visibly instead of silently reaching
 the wrong one.
 
+`--scm-read-tool` does the same for the **read-only** workers, `discovery` and
+`validator`, and is kept separate on purpose — a write tool must never reach a
+worker whose job is to look. Without it those two can verify only capabilities
+reachable through the shell, and will report MCP-based ones as unverified:
+
+```bash
+  --scm-read-tool mcp__azure-devops__repo_pull_request \
+  --scm-read-tool mcp__azure-devops__wit_work_item
+```
+
+This matters more than it looks. `discovery` is asked which SCM capabilities
+resolve; given no provider tools it cannot exercise an MCP mapping at all, and
+the honest answer is "unverified", not a guess based on something adjacent that
+happened to work.
+
 ## Review input
 
 The main session builds a JSON-equivalent input and validates it through the

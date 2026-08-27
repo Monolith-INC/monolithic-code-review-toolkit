@@ -23,6 +23,7 @@ def args(project: Path, **overrides) -> Namespace:
     fields = {
         "scope": "project", "project": str(project), "claude_home": None, "scm_tool": [],
         "matcher": INSTALL.DEFAULT_HOOK_MATCHER, "dry_run": False, "uninstall": False,
+        "scm_read_tool": [],
     }
     fields.update(overrides)
     return Namespace(**fields)
@@ -94,8 +95,33 @@ class SourceSubstitutionTest(unittest.TestCase):
             "agents/mcrt-review-poster.md"].decode("utf-8")
         self.assertIn("tools: Read, Grep, Glob, Bash, mcp__x__write, mcp__y__write\n", poster)
 
+    def test_read_tools_default_to_none_on_discovery_and_validator(self):
+        sources = INSTALL._load_sources(ADAPTER, [], [])
+        for name in ("mcrt-review-discovery.md", "mcrt-review-validator.md"):
+            body = sources[f"agents/{name}"].decode("utf-8")
+            self.assertNotIn(INSTALL.SCM_READ_TOOLS_PLACEHOLDER, body, name)
+        self.assertIn("tools: Read, Grep, Glob, Bash, Write\n",
+                      sources["agents/mcrt-review-discovery.md"].decode("utf-8"))
+
+    def test_read_tools_reach_discovery_and_validator_only(self):
+        sources = INSTALL._load_sources(ADAPTER, ["mcp__x__write"], ["mcp__x__read"])
+        discovery = sources["agents/mcrt-review-discovery.md"].decode("utf-8")
+        validator = sources["agents/mcrt-review-validator.md"].decode("utf-8")
+        poster = sources["agents/mcrt-review-poster.md"].decode("utf-8")
+        adversarial = sources["agents/mcrt-review-adversarial.md"].decode("utf-8")
+        self.assertIn("Write, mcp__x__read\n", discovery)
+        self.assertIn("Skill, mcp__x__read\n", validator)
+        self.assertNotIn("mcp__x__read", poster)
+        self.assertNotIn("mcp__x__", adversarial)
+
+    def test_write_tools_never_reach_the_read_only_workers(self):
+        sources = INSTALL._load_sources(ADAPTER, ["mcp__x__write"], ["mcp__x__read"])
+        for name in ("mcrt-review-discovery.md", "mcrt-review-validator.md",
+                     "mcrt-review-adversarial.md"):
+            self.assertNotIn("mcp__x__write", sources[f"agents/{name}"].decode("utf-8"), name)
+
     def test_every_agent_and_the_skill_are_shipped(self):
-        sources = INSTALL._load_sources(ADAPTER, [])
+        sources = INSTALL._load_sources(ADAPTER, [], [])
         self.assertEqual(len(sources), len(INSTALL.AGENT_FILENAMES) + 1)
 
 

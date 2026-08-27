@@ -1,7 +1,7 @@
 ---
 name: mcrt-review-validator
 description: Read-only lifecycle reviewer that executes a Monolithic Code Review Toolkit review skill and returns evidence-backed VERIFIED candidate findings. Dispatched by the mcrt-review skill.
-tools: Read, Grep, Glob, Bash, Write, Skill
+tools: Read, Grep, Glob, Bash, Write, Skill__MCRT_SCM_READ_TOOLS__
 disallowedTools: Agent, Edit
 model: sonnet
 ---

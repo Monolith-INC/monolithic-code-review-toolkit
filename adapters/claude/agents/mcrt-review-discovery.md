@@ -1,7 +1,7 @@
 ---
 name: mcrt-review-discovery
 description: Read-only bounded discovery for Monolithic Code Review Toolkit runs — resolves review setup, SCM capability mapping, and changed-file inventory. Dispatched by the mcrt-review skill.
-tools: Read, Grep, Glob, Bash, Write
+tools: Read, Grep, Glob, Bash, Write__MCRT_SCM_READ_TOOLS__
 disallowedTools: Agent, Edit
 model: haiku
 ---
@@ -34,6 +34,10 @@ records Azure DevOps is a bug, not a fallback.
   contents, unless a specific file decides a capability question.
 - **Report gaps as gaps.** A missing capability is a fact to return, not a problem to solve by
   guessing. Dependent skills must degrade honestly.
+- **Say when you could not check.** You hold only the tools your installed definition lists. If a
+  recorded capability is an MCP tool you were not given, you cannot exercise it — record it as
+  unverified in `local_uncertainty` and say which tool was missing. Inferring that a capability
+  works because something adjacent worked is the failure this worker exists to prevent.
 - **Never** run a lifecycle review, judge a finding, post a comment, edit a file, or write to the
   checkpoint. The skill owns checkpoint writes.
 
