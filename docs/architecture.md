@@ -137,6 +137,10 @@ lifecycle skills accept flags in the message, for example:
 /monolithic-code-review-toolkit:review-story-postflight --lenses all
 ```
 
+If a repository already carries `.monolithic-code-review/sources.json` from an older setup run,
+rerun `review-setup` after upgrading the toolkit so TypeScript detection and the saved
+`quality_lenses` contract reflect the current release.
+
 Post-flight reviews run lens passes before user confirmation so lens findings appear in the approval
 table and follow the same write gate as requirements findings.
 
@@ -153,6 +157,27 @@ archive, replaces `~/.cursor/plugins/local/monolithic-code-review-toolkit`, and 
 manifest and skill directories. Contributors may alternatively symlink a built payload or register
 the repository as a Cursor marketplace (`.cursor-plugin/marketplace.json` points at the committed
 portable plugin root).
+
+### Codex installation
+
+Codex supports two valid install paths:
+
+- Git marketplace install: `codex plugin marketplace add Monolith-INC/monolithic-code-review-toolkit`
+  followed by `codex plugin add monolithic-code-review-toolkit@monolithic-code-review-toolkit`.
+- Release payload install: extract the tagged Codex archive so `.codex-plugin/plugin.json` and
+  `skills/` land together under the installed plugin root.
+
+Git marketplace installs show version `local` in `codex plugin list` because the installed source
+is a repository checkout, not a packaged archive. Use the release payload when you need the
+installed artifact to match a specific published tag exactly.
+
+The optional Codex review-orchestrator companion lives under `adapters/codex/`,
+outside the portable plugin root. It installs custom agents and deterministic
+checkpoint guards into a trusted Codex scope; placing it in the plugin would
+violate the payload allowlist. It coordinates existing review skills
+sequentially, uses explicit quota pauses, and leaves all PR posting behind a
+root-session approval gate. Its installer uses Python 3.12+, modifies only
+managed agent files, and applies a surgical `agents.max_depth` configuration edit.
 
 ## Why the design is shaped this way
 

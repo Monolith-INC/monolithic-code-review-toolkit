@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-27
+
+### Added
+
+- A distributable Codex review-orchestrator companion adapter with isolated
+  discovery, lifecycle-review, adversarial, and approved-only posting agents.
+- Deterministic review input, worker-result, checkpoint, approval, and
+  authoritative seven-day quota guards, plus an idempotent safe installer.
+
+### Changed
+
+- Document Codex multi-agent review installation and its portable-payload
+  boundary. The adapter is documented only and is not installed in a consumer
+  repository by this release.
+
+## [0.2.5] - 2026-08-27
+
+### Changed
+
+- Clarify Codex installation guidance: Git marketplace installs are valid, but `codex plugin list`
+  reports the installed version as `local`; the release payload remains the immutable install path
+  when users want an explicit tagged artifact.
+- Document that repositories carrying older or stale `.monolithic-code-review/sources.json` files
+  should rerun `review-setup` after upgrading when TypeScript detection was previously recorded as
+  `off` for a TypeScript monorepo.
+
 ## [0.2.4] - 2026-08-27
 
 ### Fixed
@@ -142,7 +168,9 @@ after this release:
 - Installation is host-native: payloads ship as per-host archives and load through each host's own
   mechanism.
 
-[Unreleased]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.2.4...HEAD
+[Unreleased]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.2.5...v0.3.0
+[0.2.5]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.2.4...v0.2.5
 [0.2.4]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.2.1...v0.2.2

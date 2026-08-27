@@ -13,7 +13,7 @@ pnpm lint:plugin      # repository invariants
 pnpm test             # unit tests
 ```
 
-Requires git, Node.js ≥ 22, and Python 3.10+. `pnpm` itself need not be on `PATH` — the pinned
+Requires git, Node.js ≥ 22, and Python 3.12+. `pnpm` itself need not be on `PATH` — the pinned
 version is resolved through `npx` when it is absent.
 
 ## What each gate proves
@@ -47,9 +47,8 @@ compilation is deterministic. CI runs it after `payloads:build` for that reason.
 
 Two jobs, split by cost.
 
-**`checks`** — ubuntu, macOS, and Windows × Python 3.10 and 3.12. Runs `validate_plugin.py` and the
-unit tests. No toolkit checkout, so it is fast and covers every platform a contributor might author
-on.
+**`checks`** — ubuntu, macOS, and Windows × Python 3.12. Runs `validate_plugin.py` and both unit-test
+suites. No toolkit checkout, so it is fast and covers every supported contributor platform.
 
 **`conformance`** — ubuntu only. Builds the pinned toolkit (cached on the hash of
 `with_toolkit.sh`), runs `validate` and `inspect`, then compiles the vendor payloads and checks that

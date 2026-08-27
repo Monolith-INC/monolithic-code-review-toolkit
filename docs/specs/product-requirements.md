@@ -1,12 +1,19 @@
 # Monolithic Code Review Toolkit — Product Requirements
 
-**Status:** accepted baseline; current release: 0.2.4
+**Status:** accepted baseline; current release: 0.3.0
 **Version:** 0.1.0 (baseline)
 **Date:** 2026-08-12
 **Source brief:** `instructions.md`
 
 ## Version history
 
+- **0.3.0** — Add the optional Codex review-orchestrator companion adapter: isolated sequential
+  workers, explicit approval-gated posting, deterministic checkpoints, and authoritative quota
+  pauses. The portable review skills remain authoritative and the adapter is not installed into a
+  consumer repository by default.
+- **0.2.5** — Clarify Codex repository-vs-release installation behavior and document rerunning
+  `review-setup` when a stale repository-local `sources.json` still records TypeScript monorepos as
+  `quality_lenses.typescript: off`.
 - **0.2.4** — Clarify the accepted automatic TypeScript lens trigger contract in the standalone
   skill and lock it with a repository test.
 - **0.2.3** — One-command Cursor install via `scripts/install-cursor.sh`; README Cursor section

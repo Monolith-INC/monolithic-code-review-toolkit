@@ -20,10 +20,12 @@ jobs:
           python-version: "3.12"
 
       - name: Validate repository invariants
-        run: python3 scripts/validate_plugin.py .
+        run: python scripts/validate_plugin.py .
 
-      - name: Run tests
-        run: python3 -m unittest discover -s tests -t .
+      - name: Run repository tests
+        run: python -m unittest discover -s tests -t .
+      - name: Run Codex adapter tests
+        run: python -m unittest discover -s adapters/codex/tests -t .
 
       - name: Validate portable plugin root
         run: bash scripts/with_toolkit.sh validate plugins/monolithic-code-review-toolkit
@@ -44,6 +46,8 @@ jobs:
             tar -czf "dist/monolithic-code-review-toolkit-${VERSION}-${vendor}.tar.gz" \
               -C "payloads/${vendor}" payload bundle.json
           done
+          tar -czf "dist/monolithic-code-review-toolkit-${VERSION}-codex-review-orchestrator.tar.gz" \
+            adapters/codex
           ls -la dist
 
       # Release notes are this version's changelog section only — passing the

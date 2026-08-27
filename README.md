@@ -110,7 +110,7 @@ Reload Cursor (**Developer → Reload Window**), then confirm **monolithic-code-
 enabled under **Customize**. On Teams/Enterprise, ensure **Allow Local Plugin Imports** is on if
 local plugins are blocked.
 
-Pin a specific release: `MCRT_VERSION=0.2.4 curl -fsSL ... | bash`. Manual install, marketplace
+Pin a specific release: `MCRT_VERSION=0.3.0 curl -fsSL ... | bash`. Manual install, marketplace
 `/add-plugin`, and contributor checkout paths are documented in
 [docs/architecture.md](docs/architecture.md).
 
@@ -124,21 +124,46 @@ codex plugin add monolithic-code-review-toolkit@monolithic-code-review-toolkit
 ```
 
 For a local checkout, replace the GitHub repository in the first command with its local path.
+`codex plugin list` reports Git marketplace installs as version `local`; that is expected for a
+repository-backed install, even when the checkout matches a tagged release.
 
 Alternatively, install from the compiled release payload:
 
 ```bash
-tar -xzf monolithic-code-review-toolkit-0.2.4-codex.tar.gz
+tar -xzf monolithic-code-review-toolkit-0.3.0-codex.tar.gz
 ```
 
 The extracted `payload/` contains `.codex-plugin/plugin.json` and `skills/`. Codex also reads the
 portable Agent Plugins v1.0.0 manifest directly, so `plugins/monolithic-code-review-toolkit/` from
-this repository loads as-is.
+this repository loads as-is. Use the release payload when you want an immutable tagged artifact
+rather than a Git checkout.
+
+### Codex review orchestrator
+
+The portable skills remain the review source of truth. For sequential
+multi-agent orchestration, install the companion adapter after installing the
+plugin:
+
+```bash
+python3.12 adapters/codex/install_codex_adapter.py --scope project --project /path/to/repository
+```
+
+It installs isolated discovery, lifecycle-review, adversarial, and approved-only
+posting agents and safely sets `agents.max_depth = 2`. The root session retains
+approval ownership, so no PR comment is posted without an explicit approved
+finding list. See [the adapter guide](adapters/codex/README.md) for input,
+quota-pause, resume, uninstall, and provider-capability contracts.
+
+Tagged releases also ship `monolithic-code-review-toolkit-<version>-codex-review-orchestrator.tar.gz`.
+Extract it beside a trusted checkout and run the same installer from the
+extracted `adapters/codex/` directory.
 
 ### First run
 
 Run `review-setup` once per repository before anything else. It asks where your requirements live,
-detects your pull-request host, and writes `.monolithic-code-review/sources.json`.
+detects your pull-request host, and writes `.monolithic-code-review/sources.json`. If a repository
+already has that file from an older setup run, rerun `review-setup` after upgrading so
+`quality_lenses` reflects the current TypeScript detection rules.
 
 ## Requirement sources
 
@@ -189,7 +214,7 @@ See [docs/architecture.md](docs/architecture.md) for the full picture and
 
 ## Development
 
-Requires git, Node.js ≥ 22, and Python 3.10+. The first toolkit-backed command clones and builds the
+Requires git, Node.js ≥ 22, and Python 3.12+. The first toolkit-backed command clones and builds the
 pinned toolkit into `.toolkit/` and takes about a minute; later runs reuse it.
 
 ```bash
