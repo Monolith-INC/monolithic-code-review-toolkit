@@ -89,7 +89,7 @@ Extract the payload into a skills directory. Claude Code discovers any folder th
 
 ```bash
 mkdir -p ~/.claude/skills/monolithic-code-review-toolkit
-tar -xzf monolithic-code-review-toolkit-0.2.4-claude.tar.gz \
+tar -xzf monolithic-code-review-toolkit-0.4.0-claude.tar.gz \
   --strip-components=1 -C ~/.claude/skills/monolithic-code-review-toolkit payload
 ```
 
@@ -110,7 +110,7 @@ Reload Cursor (**Developer → Reload Window**), then confirm **monolithic-code-
 enabled under **Customize**. On Teams/Enterprise, ensure **Allow Local Plugin Imports** is on if
 local plugins are blocked.
 
-Pin a specific release: `MCRT_VERSION=0.3.0 curl -fsSL ... | bash`. Manual install, marketplace
+Pin a specific release: `MCRT_VERSION=0.4.0 curl -fsSL ... | bash`. Manual install, marketplace
 `/add-plugin`, and contributor checkout paths are documented in
 [docs/architecture.md](docs/architecture.md).
 
@@ -130,7 +130,7 @@ repository-backed install, even when the checkout matches a tagged release.
 Alternatively, install from the compiled release payload:
 
 ```bash
-tar -xzf monolithic-code-review-toolkit-0.3.0-codex.tar.gz
+tar -xzf monolithic-code-review-toolkit-0.4.0-codex.tar.gz
 ```
 
 The extracted `payload/` contains `.codex-plugin/plugin.json` and `skills/`. Codex also reads the
@@ -157,6 +157,30 @@ quota-pause, resume, uninstall, and provider-capability contracts.
 Tagged releases also ship `monolithic-code-review-toolkit-<version>-codex-review-orchestrator.tar.gz`.
 Extract it beside a trusted checkout and run the same installer from the
 extracted `adapters/codex/` directory.
+
+### Claude review orchestrator
+
+The same four-worker pipeline for Claude Code:
+
+```bash
+python3.12 adapters/claude/install_claude_adapter.py --scope project --project /path/to/repository
+```
+
+Two things differ, both because the host allows it. The orchestrator is a
+**skill in the main session** rather than an agent, so a worker that needs a
+human decision has its question routed to the user and the answer sent straight
+back to it — the run does not have to stop. And the approval gate is a
+`PreToolUse` hook rather than a prompt rule, so posting an unapproved finding is
+refused rather than discouraged.
+
+Add `--scm-tool <name>` for MCP-based providers; CLI-based providers such as
+GitHub through `gh` need no flag. See
+[the adapter guide](adapters/claude/README.md) for the input contract, the
+user-input round trip, the poster guard, and uninstall.
+
+Tagged releases also ship `monolithic-code-review-toolkit-<version>-claude-review-orchestrator.tar.gz`.
+Extract it beside a trusted checkout and run the same installer from the
+extracted `adapters/claude/` directory.
 
 ### First run
 

@@ -179,6 +179,20 @@ sequentially, uses explicit quota pauses, and leaves all PR posting behind a
 root-session approval gate. Its installer uses Python 3.12+, modifies only
 managed agent files, and applies a surgical `agents.max_depth` configuration edit.
 
+The optional Claude review-orchestrator companion lives under `adapters/claude/`
+and runs the same four workers, with two host-driven differences. Its
+orchestrator is a **skill in the main session**, not an agent, because a skill
+can call `AskUserQuestion` — so a worker that returns `needs_input` has its
+question routed to the user and the answer sent back with `SendMessage`, which
+resumes that worker from its transcript instead of stopping the run. And its
+approval gate is a `PreToolUse` hook rather than a prompt rule: the poster marks
+each comment `[mcrt:<finding-id>]`, and the hook refuses any pull-request write
+whose ids are not in a completed checkpoint's `approved_finding_ids`, covering
+both MCP tool calls and provider CLI commands. Claude Code caps subagent nesting
+at five levels natively, so no depth configuration is needed; the Codex
+seven-day quota gate is omitted because Claude Code exposes no authoritative
+equivalent signal.
+
 ## Why the design is shaped this way
 
 The four review skills differ by scope, not by rigour setting, because the questions genuinely

@@ -26,6 +26,8 @@ jobs:
         run: python -m unittest discover -s tests -t .
       - name: Run Codex adapter tests
         run: python -m unittest discover -s adapters/codex/tests -t .
+      - name: Run Claude adapter tests
+        run: python -m unittest discover -s adapters/claude/tests -t .
 
       - name: Validate portable plugin root
         run: bash scripts/with_toolkit.sh validate plugins/monolithic-code-review-toolkit
@@ -48,6 +50,8 @@ jobs:
           done
           tar -czf "dist/monolithic-code-review-toolkit-${VERSION}-codex-review-orchestrator.tar.gz" \
             adapters/codex
+          tar -czf "dist/monolithic-code-review-toolkit-${VERSION}-claude-review-orchestrator.tar.gz" \
+            adapters/claude
           ls -la dist
 
       # Release notes are this version's changelog section only — passing the

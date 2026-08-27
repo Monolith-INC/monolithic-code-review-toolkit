@@ -1,12 +1,15 @@
 # Monolithic Code Review Toolkit — Product Requirements
 
-**Status:** accepted baseline; current release: 0.3.0
+**Status:** accepted baseline; current release: 0.4.0
 **Version:** 0.1.0 (baseline)
 **Date:** 2026-08-12
 **Source brief:** `instructions.md`
 
 ## Version history
 
+- **0.4.0** — Add the optional Claude Code review-orchestrator companion adapter: the same four
+  workers, with the orchestrator as a main-session skill so worker questions reach the user and
+  the answers return to the worker, and with the approval gate enforced by a `PreToolUse` hook.
 - **0.3.0** — Add the optional Codex review-orchestrator companion adapter: isolated sequential
   workers, explicit approval-gated posting, deterministic checkpoints, and authoritative quota
   pauses. The portable review skills remain authoritative and the adapter is not installed into a

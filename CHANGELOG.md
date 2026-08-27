@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-27
+
+### Added
+
+- A distributable Claude Code review-orchestrator companion adapter under
+  `adapters/claude/`, running the same four workers as the Codex adapter:
+  discovery, lifecycle validation, one independent adversarial pass, and
+  approved-only posting.
+- An orchestrator that is a **skill in the main session** rather than an agent,
+  so a worker returning `needs_input` has its questions routed to the user via
+  `AskUserQuestion` and the answers sent back with `SendMessage`, resuming that
+  worker from its transcript instead of stopping the run.
+- A `PreToolUse` poster guard that enforces the approval gate rather than
+  requesting it: pull-request writes carry an `[mcrt:<finding-id>]` marker, and
+  the hook refuses any whose ids are not in a completed checkpoint's
+  `approved_finding_ids`. It covers MCP tool calls and provider CLI commands
+  alike, and stays inert when no run is in flight so manual comments are
+  unaffected.
+- An idempotent safe installer with `--scope`, `--dry-run`, `--uninstall`,
+  repeatable `--scm-tool` for MCP-based providers, and a surgical `settings.json`
+  edit that preserves unrelated keys and other hooks.
+
+### Changed
+
+- Document the Claude adapter's two host-driven divergences from Codex: no
+  `max_depth` configuration, because Claude Code caps subagent nesting at five
+  levels natively; and no seven-day quota gate, because Claude Code exposes no
+  authoritative equivalent signal.
+
 ## [0.3.0] - 2026-08-27
 
 ### Added
@@ -168,7 +197,8 @@ after this release:
 - Installation is host-native: payloads ship as per-host archives and load through each host's own
   mechanism.
 
-[Unreleased]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.2.5...v0.3.0
 [0.2.5]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.2.4...v0.2.5
 [0.2.4]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.2.3...v0.2.4

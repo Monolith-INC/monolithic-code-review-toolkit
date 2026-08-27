@@ -29,6 +29,8 @@ jobs:
         run: python -m unittest discover -s tests -t . -v
       - name: Run Codex adapter tests
         run: python -m unittest discover -s adapters/codex/tests -t . -v
+      - name: Run Claude adapter tests
+        run: python -m unittest discover -s adapters/claude/tests -t . -v
 
   # Template conformance. Builds the pinned agent-plugins-toolkit and runs its
   # own validator and payload verifier against our plugin root — this is the

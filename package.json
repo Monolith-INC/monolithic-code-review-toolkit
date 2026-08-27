@@ -1,6 +1,6 @@
 {
   "name": "monolithic-code-review-toolkit",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "description": "Code review skills for every stage of the work lifecycle: task, user story, feature, and pull request comment handling.",
   "license": "MIT",
@@ -16,6 +16,6 @@
     "payloads:build": "node scripts/build_payloads.mjs build",
     "payloads:verify": "node scripts/build_payloads.mjs verify",
     "lint:plugin": "python3.12 scripts/validate_plugin.py .",
-    "test": "python3.12 -m unittest discover -s tests -t . && python3.12 -m unittest discover -s adapters/codex/tests -t ."
+    "test": "python3.12 -m unittest discover -s tests -t . && python3.12 -m unittest discover -s adapters/codex/tests -t . && python3.12 -m unittest discover -s adapters/claude/tests -t ."
   }
 }
