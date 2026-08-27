@@ -1,12 +1,14 @@
 # Monolithic Code Review Toolkit — Product Requirements
 
-**Status:** accepted baseline; current release: 0.2.2
+**Status:** accepted baseline; current release: 0.2.3
 **Version:** 0.1.0 (baseline)
 **Date:** 2026-08-12
 **Source brief:** `instructions.md`
 
 ## Version history
 
+- **0.2.3** — One-command Cursor install via `scripts/install-cursor.sh`; README Cursor section
+  simplified to a single curl pipe.
 - **0.2.2** — Mandatory TypeScript lens in lifecycle reviews for TS repos and `.ts`/`.tsx` diffs;
   `--lenses` flags for maintainability and TypeScript on lifecycle skills.
 - **0.2.1** — Cursor marketplace and install documentation fix. Marketplace `source` now

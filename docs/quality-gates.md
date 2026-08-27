@@ -71,6 +71,9 @@ pull request:
 - `triage-pr-comments` on a pull request carrying human comments — the canvas must show all four
   attributes per comment.
 - `respond-pr-comments` with no user instruction — it must do nothing. This is the guard test.
+- Lifecycle reviews with `--lenses` flags — maintainability runs only when flagged; TypeScript runs
+  when `quality_lenses.typescript` is mandatory or the diff includes `.ts`/`.tsx`. See
+  [architecture.md](architecture.md#quality-lenses).
 
 ## Optional extra check
 

@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-08-27
+
+### Added
+
+- `scripts/install-cursor.sh` — one-command Cursor install from the latest GitHub release (full
+  payload: manifest, skills, and all shipped capabilities).
+
+### Changed
+
+- README **Cursor** section is a single curl pipe; manual tarball, symlink, and marketplace paths
+  moved to `docs/architecture.md`.
+- Document quality lenses and Cursor install in `docs/architecture.md`, `docs/quality-gates.md`, and
+  `CONTRIBUTING.md`.
+
 ## [0.2.2] - 2026-08-27
 
 ### Added
@@ -115,7 +129,8 @@ after this release:
 - Installation is host-native: payloads ship as per-host archives and load through each host's own
   mechanism.
 
-[Unreleased]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.2.3...HEAD
+[0.2.3]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.1.1...v0.2.0

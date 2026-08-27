@@ -49,7 +49,16 @@ the directory name.
 ## Version lockstep
 
 `VERSION`, `package.json`, and `plugins/<name>/plugin.json` carry the same
-version. `pnpm lint:plugin` enforces it.
+version. `pnpm lint:plugin` enforces it. For Cursor, `lint:plugin` also validates
+`.cursor-plugin/marketplace.json` points at the committed portable plugin root (not gitignored
+`payloads/`).
+
+## Quality lenses
+
+Lifecycle reviews stay requirements-first. The TypeScript lens runs automatically when
+`review-setup` marks a TypeScript repository or the diff includes `.ts`/`.tsx`; maintainability
+runs only when the user passes `--lenses maintainability` or `--lenses all`. See
+[architecture.md](docs/architecture.md#quality-lenses).
 
 ## Before opening a PR
 

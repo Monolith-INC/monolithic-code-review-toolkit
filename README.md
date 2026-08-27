@@ -27,7 +27,7 @@ acceptance criteria, and silently dropped scope as findings in their own right.
 | Answering reviewers             | `respond-pr-comments`     | Posts replies and applies fixes — only on your explicit instruction                         |
 | PR preparation                  | `prepare-pr-for-review`   | Read-only reviewer map, evidence inventory, and gated cleanup proposals                    |
 | Quality lens (TypeScript)       | `review-typescript`       | Auto in lifecycle reviews for TS repos or `.ts`/`.tsx` diffs; standalone or `--lenses`      |
-| Quality lens (maintainability)  | `review-maintainability`  | Structural review via `--lenses maintainability|all` or standalone invocation              |
+| Quality lens (maintainability)  | `review-maintainability`  | Structural review via `--lenses maintainability`, `--lenses all`, or standalone invocation   |
 
 Skills are namespaced by plugin, so `review-task` is invoked as
 `/monolithic-code-review-toolkit:review-task`.
@@ -89,7 +89,7 @@ Extract the payload into a skills directory. Claude Code discovers any folder th
 
 ```bash
 mkdir -p ~/.claude/skills/monolithic-code-review-toolkit
-tar -xzf monolithic-code-review-toolkit-0.2.2-claude.tar.gz \
+tar -xzf monolithic-code-review-toolkit-0.2.3-claude.tar.gz \
   --strip-components=1 -C ~/.claude/skills/monolithic-code-review-toolkit payload
 ```
 
@@ -99,33 +99,20 @@ Restart Claude Code, or run `/reload-plugins`. The plugin loads as
 
 ### Cursor
 
-Extract the payload into Cursor's local plugin directory:
+One command installs the **latest release** payload (all skills, manifest, and capabilities the
+plugin ships) into Cursor's local plugin directory:
 
 ```bash
-mkdir -p ~/.cursor/plugins/local/monolithic-code-review-toolkit
-tar -xzf monolithic-code-review-toolkit-0.2.2-cursor.tar.gz \
-  --strip-components=1 -C ~/.cursor/plugins/local/monolithic-code-review-toolkit payload
+curl -fsSL https://raw.githubusercontent.com/Monolith-INC/monolithic-code-review-toolkit/main/scripts/install-cursor.sh | bash
 ```
 
-Reload Cursor (**Developer: Reload Window**). The plugin appears under **Customize**.
+Reload Cursor (**Developer → Reload Window**), then confirm **monolithic-code-review-toolkit** is
+enabled under **Customize**. On Teams/Enterprise, ensure **Allow Local Plugin Imports** is on if
+local plugins are blocked.
 
-For a local checkout, build the Cursor payload and symlink it:
-
-```bash
-pnpm payloads:build
-ln -s "$(pwd)/payloads/cursor/payload" ~/.cursor/plugins/local/monolithic-code-review-toolkit
-```
-
-Or symlink the portable source directly (no build step): `plugins/monolithic-code-review-toolkit`.
-
-Install this repository as a Cursor marketplace, then enable the plugin from **Customize**:
-
-```text
-/add-plugin https://github.com/Monolith-INC/monolithic-code-review-toolkit
-```
-
-The marketplace manifest points at the committed portable plugin root, not gitignored build output.
-For a local checkout, use the repository path instead of the GitHub URL.
+Pin a specific release: `MCRT_VERSION=0.2.3 curl -fsSL ... | bash`. Manual install, marketplace
+`/add-plugin`, and contributor checkout paths are documented in
+[docs/architecture.md](docs/architecture.md).
 
 ### Codex
 
@@ -141,7 +128,7 @@ For a local checkout, replace the GitHub repository in the first command with it
 Alternatively, install from the compiled release payload:
 
 ```bash
-tar -xzf monolithic-code-review-toolkit-0.2.2-codex.tar.gz
+tar -xzf monolithic-code-review-toolkit-0.2.3-codex.tar.gz
 ```
 
 The extracted `payload/` contains `.codex-plugin/plugin.json` and `skills/`. Codex also reads the

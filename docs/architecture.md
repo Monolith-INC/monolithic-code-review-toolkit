@@ -76,7 +76,8 @@ belongs to each host. Payloads are released as per-host archives and installed t
 mechanism. For Claude Code that is skills-directory discovery: a folder containing
 `.claude-plugin/plugin.json` under `~/.claude/skills/` or `<repo>/.claude/skills/` loads as
 `<name>@skills-dir` with no marketplace and no install step — so nothing has to be hand-authored to
-make the payload installable. For Cursor, release tarballs extract into
+make the payload installable. For Cursor, end users run `scripts/install-cursor.sh` (or the
+documented one-liner in README) to install the latest release payload into
 `~/.cursor/plugins/local/<name>/`; GitHub marketplace installs resolve
 `.cursor-plugin/marketplace.json` against the committed portable root.
 
@@ -138,6 +139,20 @@ lifecycle skills accept flags in the message, for example:
 
 Post-flight reviews run lens passes before user confirmation so lens findings appear in the approval
 table and follow the same write gate as requirements findings.
+
+### Cursor installation
+
+End users install with one command — no repository checkout or manual tarball steps:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Monolith-INC/monolithic-code-review-toolkit/main/scripts/install-cursor.sh | bash
+```
+
+`scripts/install-cursor.sh` resolves the latest GitHub release, downloads the Cursor payload
+archive, replaces `~/.cursor/plugins/local/monolithic-code-review-toolkit`, and verifies the
+manifest and skill directories. Contributors may alternatively symlink a built payload or register
+the repository as a Cursor marketplace (`.cursor-plugin/marketplace.json` points at the committed
+portable plugin root).
 
 ## Why the design is shaped this way
 
