@@ -13,6 +13,9 @@ payloads/
 # Pinned toolkit checkout (cloned on demand by scripts/with_toolkit.sh)
 .toolkit/
 
+# Isolated feature worktrees (local only)
+.worktrees/
+
 # Scaffolding reference material — deleted once scaffolding completes
 _reference/
 
