@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from core.review_harness.checkpoints import CheckpointError, authorize
+from core.review_harness.checkpoints import CheckpointError, authorize, record_outcome
 from core.review_harness.contracts import ContractError, binding_digest, validate_sources
 
 
@@ -70,7 +70,21 @@ def main() -> int:
         payload = json.loads(sys.stdin.read() or "{}")
     except json.JSONDecodeError:
         return 0
-    if not isinstance(payload, dict) or payload.get("hook_event_name") != "PreToolUse":
+    if not isinstance(payload, dict):
+        return 0
+    if payload.get("hook_event_name") == "PostToolUse":
+        workspace = Path(payload.get("cwd", ""))
+        path = _checkpoint(workspace) if workspace.is_absolute() else None
+        tool_use_id = payload.get("tool_use_id")
+        if path and isinstance(tool_use_id, str):
+            try:
+                checkpoint = json.loads(path.read_text(encoding="utf-8"))
+                if checkpoint.get("status") == "attempting":
+                    record_outcome(path, tool_use_id, True)
+            except (OSError, json.JSONDecodeError, CheckpointError):
+                return 2
+        return 0
+    if payload.get("hook_event_name") != "PreToolUse":
         return 0
     reason = evaluate(payload)
     if reason is None:
