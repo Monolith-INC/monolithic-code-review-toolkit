@@ -1,0 +1,17 @@
+# id: 5-evolution/health
+# tier: 5
+# type: evolution
+# area: health
+# title: Health metrics
+# read_when: Checking whether the pipeline and suite are currently trustworthy.
+# provenance: derived
+# sources: .github/workflows/ci.yml
+# derived_from_commit: f1x7ure0
+# updated: 2026-08-30
+# version: 1
+# status: current
+metric	value	trend
+ci_pass_rate_30d	94%	flat
+median_build_minutes	7.2	rising
+coverage	81%	flat
+open_pr_median_age_days	1.4	falling

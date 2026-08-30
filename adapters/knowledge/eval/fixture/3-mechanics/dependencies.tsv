@@ -1,0 +1,18 @@
+# id: 3-mechanics/dependencies
+# tier: 3
+# type: mechanics
+# area: dependencies
+# title: Dependencies
+# read_when: Checking whether a package is already available before adding one.
+# provenance: derived
+# sources: pyproject.toml, uv.lock
+# derived_from_commit: f1x7ure0
+# updated: 2026-08-30
+# version: 1
+# status: current
+name	version	kind	licence
+fastapi	0.115.0	direct	MIT
+pydantic	2.9.0	direct	MIT
+psycopg	3.2.1	direct	LGPL
+pytest	8.3.0	dev	MIT
+ruff	0.6.4	dev	MIT

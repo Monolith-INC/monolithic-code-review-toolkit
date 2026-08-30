@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Knowledge retrieval evaluation** (`pnpm eval:knowledge`). The store shipped in 0.5.0 with every
+  design choice justified by argument and none by evidence. Tier 1 measures ranking deterministically
+  — rank@1/@3, mean reciprocal rank, ladder token cost, and the margin between a correct unit and a
+  planted near-miss — against a committed baseline, over a 23-unit synthetic fixture and twelve
+  questions. Four assertions are pass/fail: a links-only unit stays unreachable by search, an
+  `assumed` unit announces itself, an over-budget fetch truncates with a handle that advances, and
+  ordering is reproducible.
+- Tier 2 (`adapters/knowledge/eval/model_eval.md`) is a documented, hand-run procedure for the two
+  metrics that are judgements rather than computations: hit@1 on the **pick**, and the
+  wrong-file-confidence rate. `MCRT-001` had demanded both of those *and* that the harness need no
+  model; that contradiction is recorded and corrected in the ticket rather than quietly resolved.
+
+### Changed
+
+- The eval reports two real retrieval weaknesses rather than tuning them away. "Which layer owns
+  currency rounding" ranks the architecture unit above the rules unit that states the rule, and a
+  short identity unit outranks operations for a gateway retry question. Both carry a negative
+  distractor margin in the baseline. A baseline of 1.0 measures nothing.
+- The harness's own sensitivity is measured: of five deliberate ranking perturbations three are
+  caught and two are not, and the aggregates alone missed two of the three — they were caught by the
+  per-question rank comparison and the distractor margin, both added because the sweep showed they
+  were needed.
+
 ## [0.5.0] - 2026-08-30
 
 ### Added
