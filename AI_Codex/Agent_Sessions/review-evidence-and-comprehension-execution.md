@@ -139,3 +139,12 @@ tags:
 - **Commands / results:** `npm run validate`, `inspect`, `payloads:build`, `payloads:verify`, `lint:plugin`, `test`, `git diff --check`: all passed at `0.2.0`.
 - **Known limitations (unchanged):** Real remote pull-request/provider capability evaluation remains unexecuted — no configured accessible target was supplied.
 - **Exact next safe action:** None for this workstream; monitor release workflow and install smoke-test from published archives if desired.
+
+## Checkpoint 2026-08-27 — release-blocker retry
+
+- **Current phase / slice:** Post-release blocker retry; independent-review blocker cleared.
+- **Completed work:** A fresh independent Sol/high review reconstructed the v0.2.0 feature diff and checked current `v0.2.3` drift. It found a contradictory TypeScript lens trigger. The constraint now agrees with the accepted automatic trigger set, and a focused regression test proves the obsolete explicit-only wording is rejected. One permitted Sol/high recheck verified the fix.
+- **Verification:** `npm run test` passed (19 tests); `npm run validate`, `inspect`, `payloads:build`, `payloads:verify`, `lint:plugin`, and `git diff --check` all passed. The recheck found no unresolved blocker in this fix.
+- **Remaining limitation:** Real remote-PR line-anchor/provider-capability evaluation remains unexecuted. `.monolithic-code-review/sources.json` is absent and no PR identifier or configured accessible target exists; no provider fallback, authentication, fetch, or external write was attempted.
+- **Worktree safety:** `monolithic-code-review-toolkit.code-workspace` remains an unrelated untracked user file and is outside release scope.
+- **Exact next safe action:** Provide or configure a repository-local SCM capability mapping and a specific accessible PR if a real-provider evaluation is required. Commit/tag/push/release remains separately user-authorized.
