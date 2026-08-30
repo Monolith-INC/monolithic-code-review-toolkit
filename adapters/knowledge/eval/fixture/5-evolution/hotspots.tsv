@@ -1,0 +1,17 @@
+# id: 5-evolution/hotspots
+# tier: 5
+# type: evolution
+# area: hotspots
+# title: Churn hotspots
+# read_when: Finding which files change most, and where change is concentrated in few hands.
+# provenance: derived
+# sources: git log
+# derived_from_commit: f1x7ure0
+# updated: 2026-08-30
+# version: 1
+# status: current
+path	commits_12mo	authors	note
+packages/jobs/src/settlement.py	84	2	high churn, low bus factor
+packages/core/src/entities.py	31	6	stable
+packages/api/src/routes.py	57	5	grows with each endpoint
+core/migrations/	44	7	additive only
