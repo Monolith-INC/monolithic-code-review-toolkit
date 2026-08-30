@@ -17,7 +17,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from pathlib import Path
 
 SERVER_NAME = "mcrt-knowledge"
@@ -186,7 +186,7 @@ def install(args: argparse.Namespace) -> int:
                 "config_path": str(config_path),
                 "knowledge_root": str(knowledge_root),
                 "knowledge_root_source": origin,
-                "config_edit": asdict(edit),
+                "config_action": edit.action,
             },
             indent=2,
             sort_keys=True,

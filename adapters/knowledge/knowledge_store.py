@@ -467,6 +467,8 @@ class KnowledgeStore:
         """The routing table. Descriptions only — this call never returns content."""
         rows = []
         for unit in self.units.values():
+            if unit.status != "current":
+                continue
             if path_prefix and not unit.id.startswith(path_prefix.strip("/")):
                 continue
             if type and unit.type != type:
@@ -627,6 +629,7 @@ class KnowledgeStore:
         anchor: str | None = None,
         start_line: int | None = None,
         end_line: int | None = None,
+        start_column: int = 0,
         max_tokens: int | None = None,
     ) -> dict[str, Any]:
         """One unit, one anchor, or one line range — always with its version token."""
@@ -645,7 +648,10 @@ class KnowledgeStore:
         elif start_line is not None:
             lines = unit.raw.splitlines()
             stop = end_line if end_line is not None else len(lines)
-            text = "\n".join(lines[max(start_line - 1, 0):stop])
+            selected = lines[max(start_line - 1, 0):stop]
+            if selected and start_column:
+                selected[0] = selected[0][start_column:]
+            text = "\n".join(selected)
             offset = start_line
         else:
             text = unit.raw
@@ -658,19 +664,33 @@ class KnowledgeStore:
             lines = text.splitlines()
             kept: list[str] = []
             used = 0
-            for line in lines:
+            for index, line in enumerate(lines):
                 if used + len(line) + 1 > budget and kept:
+                    break
+                if used + len(line) + 1 > budget:
+                    available = max(budget - used, 1)
+                    kept.append(line[:available])
+                    used += available
+                    continuation = {
+                        "id": unit_id,
+                        "anchor": None,
+                        "start_line": offset + index,
+                        "start_column": (start_column if index == 0 else 0) + available,
+                        "remaining_lines": len(lines) - index,
+                    }
                     break
                 kept.append(line)
                 used += len(line) + 1
             text = "\n".join(kept)
             truncated = True
-            continuation = {
-                "id": unit_id,
-                "anchor": None,
-                "start_line": offset + len(kept),
-                "remaining_lines": len(lines) - len(kept),
-            }
+            if continuation is None:
+                continuation = {
+                    "id": unit_id,
+                    "anchor": None,
+                    "start_line": offset + len(kept),
+                    "start_column": 0,
+                    "remaining_lines": len(lines) - len(kept),
+                }
 
         return {
             "id": unit.id,
@@ -777,6 +797,8 @@ class KnowledgeStore:
             try:
                 temporary.write_text(text, encoding="utf-8")
                 os.replace(temporary, path)
+                self._signature = None
+                self.write_catalog()
             finally:
                 temporary.unlink(missing_ok=True)
         self._signature = None  # force a reload on the next read
@@ -824,7 +846,12 @@ class KnowledgeStore:
         lines.extend("\t".join(_tsv_cell(row[column]) for column in CATALOG_COLUMNS) for row in rows)
         path = self.root / CATALOG_NAME
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+        try:
+            temporary.write_text("\n".join(lines) + "\n", encoding="utf-8")
+            os.replace(temporary, path)
+        finally:
+            temporary.unlink(missing_ok=True)
         return path
 
 

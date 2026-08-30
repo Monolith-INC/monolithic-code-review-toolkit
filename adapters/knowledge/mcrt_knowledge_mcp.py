@@ -271,6 +271,7 @@ async def knowledge_fetch(
         Field(default=None, description="Heading slug from a find hit, e.g. 'mandated'. Cheapest way to read one rule."),
     ] = None,
     start_line: Annotated[int | None, Field(default=None, ge=1, description="1-indexed line to start at.")] = None,
+    start_column: Annotated[int, Field(default=0, ge=0, description="0-indexed column for resuming a split long line.")] = 0,
     end_line: Annotated[int | None, Field(default=None, ge=1, description="1-indexed inclusive line to stop at.")] = None,
     max_tokens: Annotated[
         int,
@@ -288,7 +289,7 @@ async def knowledge_fetch(
     """
     try:
         result = store().fetch(
-            unit_id=id, anchor=anchor, start_line=start_line, end_line=end_line, max_tokens=max_tokens
+            unit_id=id, anchor=anchor, start_line=start_line, end_line=end_line, start_column=start_column, max_tokens=max_tokens
         )
     except Exception as exc:  # noqa: BLE001
         return _error(exc)
@@ -312,7 +313,7 @@ async def knowledge_fetch(
         lines += [
             "",
             f"--- truncated at the token ceiling. {handle['remaining_lines']} line(s) remain. "
-            f"Continue with start_line={handle['start_line']}.",
+            f"Continue with start_line={handle['start_line']}, start_column={handle['start_column']}.",
         ]
     return "\n".join(lines)
 

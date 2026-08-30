@@ -124,6 +124,13 @@ def build_store(tmp: str) -> "STORE.KnowledgeStore":
 
 
 class CatalogTest(unittest.TestCase):
+    def test_catalog_omits_superseded_units_by_default(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = build_store(tmp)
+            path = store.root / "2-structure" / "architecture.md"
+            path.write_text(path.read_text().replace("status: current", "status: superseded"))
+            rows = store.catalog()
+        self.assertNotIn("2-structure/architecture", [row["id"] for row in rows])
     def test_returns_routing_rows_without_content(self):
         with tempfile.TemporaryDirectory() as tmp:
             rows = build_store(tmp).catalog()
@@ -215,6 +222,15 @@ class FindTest(unittest.TestCase):
 
 
 class FetchTest(unittest.TestCase):
+    def test_long_first_line_never_exceeds_the_token_budget(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = build_store(tmp)
+            (store.root / "long.md").write_text("x" * 100, encoding="utf-8")
+            result = store.fetch("long", max_tokens=10)
+        self.assertLessEqual(STORE.estimate_tokens(result["content"]), 10)
+        self.assertTrue(result["truncated"])
+        self.assertEqual(result["continuation"]["start_line"], 1)
+        self.assertGreater(result["continuation"]["start_column"], 0)
     def test_returns_content_with_a_version_token(self):
         with tempfile.TemporaryDirectory() as tmp:
             result = build_store(tmp).fetch("3-mechanics/testing")
@@ -283,6 +299,13 @@ class LinksTest(unittest.TestCase):
 
 
 class WriteTest(unittest.TestCase):
+    def test_writes_refresh_the_adapter_free_catalog(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = build_store(tmp)
+            store.write_catalog()
+            store.put("2-structure/topology", ARCHITECTURE.replace("2-structure/architecture", "2-structure/topology"), STORE.NEW_VERSION)
+            catalog = (store.root / STORE.CATALOG_NAME).read_text()
+        self.assertIn("2-structure/topology", catalog)
     def test_put_creates_a_unit_and_bumps_the_revision(self):
         with tempfile.TemporaryDirectory() as tmp:
             store = build_store(tmp)

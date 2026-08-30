@@ -184,6 +184,16 @@ class CommandLineTest(unittest.TestCase):
             self.assertNotIn("mcpServers", json.loads(config.read_text()))
             self.assertFalse((Path(tmp) / ".claude" / INSTALLER.RECORD_NAME).exists())
 
+    def test_install_record_does_not_copy_other_server_credentials(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            sources_json("knowledge", project)
+            (project / ".mcp.json").write_text(json.dumps({"mcpServers": {"other": {"env": {"TOKEN": "secret"}}}}))
+            self.assertEqual(INSTALLER.main(["--project", tmp]), 0)
+            record = (project / ".claude" / INSTALLER.RECORD_NAME).read_text()
+        self.assertNotIn("secret", record)
+        self.assertNotIn("config_edit", record)
+
     def test_a_declined_store_blocks_the_install(self):
         with tempfile.TemporaryDirectory() as tmp:
             sources_json(None, Path(tmp))
