@@ -13,8 +13,10 @@ host with no MCP server can reach the same data with `cat` and `grep`.
 from __future__ import annotations
 
 import difflib
+import fcntl
 import hashlib
 import math
+import os
 import re
 import unicodedata
 from dataclasses import dataclass
@@ -391,7 +393,9 @@ class KnowledgeStore:
         found = [
             path
             for path in sorted(self.root.rglob("*"))
-            if path.is_file() and path.suffix in {".md", ".tsv"} and path.name != CATALOG_NAME
+            if path.is_file()
+            and path.suffix in {".md", ".tsv"}
+            and path.name not in {CATALOG_NAME, MANIFEST_NAME}
         ]
         return found
 
@@ -636,7 +640,8 @@ class KnowledgeStore:
                     f"{unit_id} has no anchor {anchor!r}; available anchors: {', '.join(available) or 'none'}"
                 )
             text = matches[0].text
-            offset = matches[0].start_line
+            body_offset = len(unit.raw.splitlines()) - len(unit.body.splitlines())
+            offset = body_offset + matches[0].start_line
         elif start_line is not None:
             lines = unit.raw.splitlines()
             stop = end_line if end_line is not None else len(lines)
@@ -662,7 +667,7 @@ class KnowledgeStore:
             truncated = True
             continuation = {
                 "id": unit_id,
-                "anchor": anchor,
+                "anchor": None,
                 "start_line": offset + len(kept),
                 "remaining_lines": len(lines) - len(kept),
             }
@@ -735,7 +740,9 @@ class KnowledgeStore:
             fields, body = parse_tsv_header(text)
             if not fields:
                 return text
-            fields.setdefault("id", unit_id)
+            if fields.get("id") not in {None, unit_id}:
+                raise StoreError(f"frontmatter id {fields['id']!r} does not match unit id {unit_id!r}")
+            fields["id"] = unit_id
             fields["updated"] = today
             fields["version"] = str(_next_version(previous, fields))
             return dump_tsv_header(fields) + body
@@ -743,14 +750,35 @@ class KnowledgeStore:
         fields, body = parse_frontmatter(text)
         if not fields:
             return text
-        fields.setdefault("id", unit_id)
+        if fields.get("id") not in {None, unit_id}:
+            raise StoreError(f"frontmatter id {fields['id']!r} does not match unit id {unit_id!r}")
+        fields["id"] = unit_id
         fields["updated"] = today
         fields["version"] = _next_version(previous, fields)
         return dump_frontmatter(fields) + body
 
-    def _write(self, unit_id: str, path: Path, text: str) -> dict[str, Any]:
+    def _write(self, unit_id: str, path: Path, text: str, if_version: str) -> dict[str, Any]:
+        """Atomically replace a unit after validating its version under a file lock."""
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(text, encoding="utf-8")
+        lock_path = self.root / ".locks" / (hashlib.sha256(str(path).encode()).hexdigest() + ".lock")
+        lock_path.parent.mkdir(parents=True, exist_ok=True)
+        with lock_path.open("a+", encoding="utf-8") as lock:
+            fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+            current = self._read_unit(path) if path.exists() else None
+            if current is None:
+                if if_version != NEW_VERSION:
+                    raise StoreError(
+                        f"{unit_id} no longer exists; pass if_version={NEW_VERSION!r} to create it"
+                    )
+            elif if_version == NEW_VERSION or current.version != if_version:
+                raise VersionConflict(unit_id, if_version, current.version, current.raw)
+
+            temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+            try:
+                temporary.write_text(text, encoding="utf-8")
+                os.replace(temporary, path)
+            finally:
+                temporary.unlink(missing_ok=True)
         self._signature = None  # force a reload on the next read
         return {
             "id": unit_id,
@@ -764,7 +792,7 @@ class KnowledgeStore:
         previous = self._check_version(unit_id, if_version)
         fmt = previous.fmt if previous else _infer_format(content)
         path = previous.path if previous else self._resolve(unit_id, fmt)
-        return self._write(unit_id, path, self._stamp(content, fmt, unit_id, previous))
+        return self._write(unit_id, path, self._stamp(content, fmt, unit_id, previous), if_version)
 
     def patch(self, unit_id: str, old: str, new: str, if_version: str) -> dict[str, Any]:
         """Replace exactly one occurrence of `old`. A miss returns the real text."""
@@ -777,7 +805,7 @@ class KnowledgeStore:
             raise PatchMismatch(unit_id, occurrences, _nearest_context(previous.raw, old))
 
         patched = previous.raw.replace(old, new, 1)
-        return self._write(unit_id, previous.path, self._stamp(patched, previous.fmt, unit_id, previous))
+        return self._write(unit_id, previous.path, self._stamp(patched, previous.fmt, unit_id, previous), if_version)
 
     def add(self, unit_id: str, content: str, if_version: str) -> dict[str, Any]:
         """Append to a unit. History is context; appending preserves it."""
@@ -785,7 +813,7 @@ class KnowledgeStore:
         if previous is None:
             raise UnknownUnit(unit_id, difflib.get_close_matches(unit_id, sorted(self.units), n=5, cutoff=0.4))
         joined = previous.raw.rstrip("\n") + "\n\n" + content.strip("\n") + "\n"
-        return self._write(unit_id, previous.path, self._stamp(joined, previous.fmt, unit_id, previous))
+        return self._write(unit_id, previous.path, self._stamp(joined, previous.fmt, unit_id, previous), if_version)
 
     # ---- maintenance -------------------------------------------------------
 

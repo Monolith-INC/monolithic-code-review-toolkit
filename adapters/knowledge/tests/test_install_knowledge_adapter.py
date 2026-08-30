@@ -160,6 +160,10 @@ class RemovalTest(unittest.TestCase):
 
 
 class CommandLineTest(unittest.TestCase):
+    def test_user_scope_is_rejected_for_a_project_specific_store(self):
+        with self.assertRaises(SystemExit):
+            INSTALLER.build_parser().parse_args(["--scope", "user"])
+
     def test_dry_run_writes_nothing(self):
         with tempfile.TemporaryDirectory() as tmp:
             sources_json("knowledge", Path(tmp))

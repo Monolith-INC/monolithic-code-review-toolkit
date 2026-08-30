@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -54,9 +53,6 @@ def _project(args: argparse.Namespace) -> Path:
 
 
 def _config_path(args: argparse.Namespace) -> Path:
-    if args.scope == "user":
-        base = Path(os.environ.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude").expanduser().resolve()
-        return base / ".mcp.json"
     return _project(args) / ".mcp.json"
 
 
@@ -152,10 +148,10 @@ def _entry_is_ours(entry: object, adapter_root: Path) -> bool:
 def install(args: argparse.Namespace) -> int:
     project = _project(args)
     adapter_root = _adapter_root()
-    config_path = _config_path(args)
     record_path = project / ".claude" / RECORD_NAME
 
     try:
+        config_path = _config_path(args)
         knowledge_root, origin = resolve_knowledge_root(project, args.knowledge_root)
         before = config_path.read_text(encoding="utf-8") if config_path.exists() else ""
         edit = plan_config_edit(before, adapter_root, knowledge_root)
@@ -214,10 +210,10 @@ def install(args: argparse.Namespace) -> int:
 def uninstall(args: argparse.Namespace) -> int:
     project = _project(args)
     adapter_root = _adapter_root()
-    config_path = _config_path(args)
     record_path = project / ".claude" / RECORD_NAME
 
     try:
+        config_path = _config_path(args)
         before = config_path.read_text(encoding="utf-8") if config_path.exists() else ""
         edit = plan_removal(before, adapter_root)
     except (OSError, ValueError) as error:
@@ -238,7 +234,6 @@ def uninstall(args: argparse.Namespace) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--scope", choices=("project", "user"), default="project")
     parser.add_argument("--project", help="Repository root. Defaults to the working directory.")
     parser.add_argument(
         "--knowledge-root",

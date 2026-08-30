@@ -16,8 +16,8 @@ python3.12 adapters/knowledge/install_knowledge_adapter.py --project /path/to/re
 
 The installer registers one stdio server named `mcrt-knowledge` in the project's `.mcp.json` and
 points it at `knowledge.root` from `.monolithic-code-review/sources.json`. Pass `--knowledge-root`
-to override, `--scope user` to register it for every repository, `--dry-run` to see the planned
-edit, and `--uninstall` to remove it. Uninstalling never touches the store itself.
+to override, `--dry-run` to see the planned edit, or `--uninstall` to remove it. Uninstalling never
+touches the store itself.
 
 This is the only part of the toolkit with third-party Python dependencies (`mcp`, `pydantic`). The
 portable plugin and the two review-orchestrator adapters still run from a checkout with nothing

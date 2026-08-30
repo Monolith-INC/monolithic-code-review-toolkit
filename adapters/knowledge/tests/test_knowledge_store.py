@@ -5,6 +5,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ADAPTER = Path(__file__).resolve().parents[1]
 
@@ -152,6 +153,17 @@ class CatalogTest(unittest.TestCase):
         self.assertEqual(first, second)
         self.assertTrue(first.decode().startswith("id\ttype\tarea\ttitle\tpath\tprovenance\tupdated\tread_when"))
 
+    def test_manifest_is_not_indexed_as_a_unit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = build_store(tmp)
+            (store.root / STORE.MANIFEST_NAME).write_text("# Knowledge manifest\n", encoding="utf-8")
+            rows = store.catalog()
+        self.assertEqual([row["id"] for row in rows], [
+            "2-structure/architecture",
+            "3-mechanics/dependencies",
+            "3-mechanics/testing",
+        ])
+
 
 class FindTest(unittest.TestCase):
     def test_returns_locations_with_matched_terms_not_documents(self):
@@ -231,6 +243,21 @@ class FetchTest(unittest.TestCase):
         self.assertGreater(result["continuation"]["remaining_lines"], 0)
         self.assertLessEqual(STORE.estimate_tokens(result["content"]), 12)
 
+    def test_truncated_anchor_continuation_resumes_after_the_first_chunk(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = build_store(tmp)
+            first = store.fetch("2-structure/architecture", anchor="rules", max_tokens=8)
+            continuation = first["continuation"]
+            self.assertIsNotNone(continuation)
+            resumed = store.fetch(
+                continuation["id"],
+                anchor=continuation["anchor"],
+                start_line=continuation["start_line"],
+                max_tokens=100,
+            )
+        self.assertNotIn(first["content"], resumed["content"])
+        self.assertIn("Open questions", resumed["content"])
+
     def test_unknown_unit_suggests_nearest_ids(self):
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(STORE.UnknownUnit) as caught:
@@ -273,6 +300,30 @@ class WriteTest(unittest.TestCase):
             after = store.fetch("3-mechanics/testing")["version"]
         self.assertEqual(written["version"], after)
         self.assertNotEqual(before, after)
+
+    def test_a_writer_that_loses_the_race_gets_a_version_conflict(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            first = build_store(tmp)
+            second = STORE.KnowledgeStore(first.root)
+            version = second.fetch("3-mechanics/testing")["version"]
+            check_version = second._check_version
+
+            def race(unit_id, if_version):
+                previous = check_version(unit_id, if_version)
+                first.put("3-mechanics/testing", TESTING.replace("Fixtures", "Updated fixtures"), version)
+                return previous
+
+            with patch.object(second, "_check_version", side_effect=race):
+                with self.assertRaises(STORE.VersionConflict):
+                    second.put("3-mechanics/testing", TESTING.replace("Fixtures", "Stale fixtures"), version)
+            self.assertIn("Updated fixtures", first.fetch("3-mechanics/testing")["content"])
+
+    def test_put_rejects_frontmatter_for_a_different_unit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = build_store(tmp)
+            with self.assertRaises(STORE.StoreError) as caught:
+                store.put("2-structure/topology", ARCHITECTURE, STORE.NEW_VERSION)
+        self.assertIn("frontmatter id", str(caught.exception))
 
     def test_stale_if_version_returns_the_current_content(self):
         with tempfile.TemporaryDirectory() as tmp:
