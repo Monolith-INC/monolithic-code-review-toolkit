@@ -96,8 +96,10 @@ flowchart LR
   which preserves the no-invented-requirements guarantee that the toolkit already makes.
 - First-run setup costs an interview. That is the point: the tiers worth the most are the ones only
   a human can supply.
-- The store can go stale. Incremental refresh and `derived_from_commit` make staleness detectable,
-  and store drift is reported under local uncertainty rather than held against a diff.
+- The store can go stale, and this decision does not yet handle it. Incremental refresh and
+  `derived_from_commit` make staleness *detectable*, but nothing evaluates them at read time, so a
+  stale unit is still cited at full confidence — the store-drift rule only fires when a reviewer
+  happens to notice the disagreement. Tracked as a defect in `MCRT-005`.
 - CI gains a dependency-install step. The knowledge adapter's MCP contract tests skip without the
   SDK, so that step is what keeps them from silently degrading to store-only coverage.
 - Adding a dependency at all is a deviation from a repository that had none. Confining it to one
@@ -111,3 +113,13 @@ flowchart LR
 - `plugins/monolithic-code-review-toolkit/skills/discover-project-knowledge/SKILL.md`
 - `plugins/monolithic-code-review-toolkit/skills/review-setup/SKILL.md`
 - `adapters/knowledge/README.md`
+
+## Follow-up work
+
+| Ticket | Type | What it settles |
+| --- | --- | --- |
+| `MCRT-005` | Bug | A stale unit still supports a finding at full confidence |
+| `MCRT-001` | Ticket | Retrieval is unmeasured: hit@1, tokens-to-correct-answer, wrong-file-confidence |
+| `MCRT-002` | Deferred | SQLite + FTS5, with the trigger condition written down rather than rediscovered |
+| `MCRT-003` | Deferred | A semantic fallback, gated on evidence that lexical retrieval actually misses |
+| `MCRT-004` | Ticket | Give the orchestrator workers the four read tools directly |

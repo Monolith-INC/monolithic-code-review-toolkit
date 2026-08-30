@@ -229,9 +229,11 @@ Recorded rather than hidden, and revisited after v0.1.0:
 - Diff hunk parsing and comment line-anchoring are performed by the agent, not by tested code.
   This is the weak point of ADR-0001 and the reason it carries a revisit trigger.
 - No slash-command surface on any host; skills are the only invocation surface.
-- A knowledge store can go stale between refreshes. Incremental refresh makes staleness detectable
-  through `derived_from_commit` and each unit's `sources`, but nothing forces a refresh, so a review
-  can cite a rule the team has since moved past. Store drift is reported under local uncertainty
-  rather than held against the diff, which contains the cost without removing it.
+- **Defect, not an accepted limitation:** a stale knowledge unit is still cited at full confidence.
+  The evidence to detect staleness is recorded — `knowledge.derived_from_commit` and each unit's
+  `sources` — and nothing evaluates it at read time, so a review can report a finding against a diff
+  that follows the current architecture while citing a rule that stopped being true months ago.
+  Tracked as `MCRT-005`.
 - Store retrieval quality is not yet measured. The three metrics that would decide it — hit@1 on the
-  routing call, tokens-to-correct-answer, and wrong-file-confidence rate — have no harness.
+  routing call, tokens-to-correct-answer, and wrong-file-confidence rate — have no harness. Tracked
+  as `MCRT-001`.
