@@ -34,8 +34,24 @@ class ResolveRootTest(unittest.TestCase):
             project = Path(tmp)
             sources_json("AI_Codex/Project_Knowledge", project)
             root, origin = INSTALLER.resolve_knowledge_root(project, None)
-        self.assertEqual(root, project / "AI_Codex/Project_Knowledge")
+        # `.resolve()` on both sides: the temporary directory is itself behind a
+        # symlink on macOS (/var/folders -> /private/var/folders), so comparing a
+        # resolved result against an unresolved expectation fails there only.
+        self.assertEqual(root, (project / "AI_Codex/Project_Knowledge").resolve())
         self.assertIn("sources.json", origin)
+
+    def test_a_symlinked_project_root_resolves_to_its_real_path(self):
+        """The path is written into .mcp.json, so it must survive the symlink."""
+        with tempfile.TemporaryDirectory() as tmp:
+            real = Path(tmp) / "real"
+            real.mkdir()
+            link = Path(tmp) / "link"
+            link.symlink_to(real)
+            sources_json("knowledge", link)
+
+            root, _ = INSTALLER.resolve_knowledge_root(link, None)
+            self.assertEqual(root, real.resolve() / "knowledge")
+            self.assertNotIn("link", root.parts)
 
     def test_absolute_recorded_root_is_kept(self):
         with tempfile.TemporaryDirectory() as tmp:
