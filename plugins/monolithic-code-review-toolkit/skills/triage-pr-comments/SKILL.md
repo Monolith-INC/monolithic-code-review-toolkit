@@ -82,6 +82,16 @@ behaviour, verify against current official documentation via Context7 or web sea
 recall. Where it appeals to a project convention, find that convention in the repository and cite it,
 or note that it is not written down anywhere.
 
+When `.monolithic-code-review/sources.json` records a `knowledge.root`, that lookup is addressed
+rather than open-ended. Follow the cost ladder — routing table, then search, then one unit — over
+`4-rules/*` for standards, workflow, and security constraints, and `2-structure/architecture` for a
+claim about layering or dependency direction. Cite the unit `id` alongside the convention.
+
+This makes both answers defensible. A convention the store records as `derived` or `stated` supports
+the reviewer's claim; one it does not record at all makes "it is not written down anywhere" a
+checked result rather than an assertion. A `provenance: assumed` unit supports neither side — treat
+the claim as `INCONCLUSIVE` and say which unit was inconclusive and why.
+
 Create an evidence record for every material reviewer claim: `id`, falsifiable `claim`, `expected`
 invariant or convention, decisive `evidence`, and, when applicable, same-measure `baseline` and
 `treatment`; include `confounds` when present. Then assign these independent attributes:

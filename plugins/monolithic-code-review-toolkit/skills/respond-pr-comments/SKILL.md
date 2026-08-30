@@ -85,9 +85,13 @@ For each thread the user accepted:
 
 - Make the change the comment asks for, and only that change. A review reply is not an invitation to
   refactor the surrounding code.
-- Match the file's existing conventions.
-- Run the project's tests and report the actual result. If they fail, say so with the output rather
-  than proceeding.
+- Match the file's existing conventions. Where `.monolithic-code-review/sources.json` records a
+  `knowledge.root`, `4-rules/coding-standards` is the addressed source for what this project
+  mandates or prohibits — prefer it over inferring a convention from the surrounding lines, and
+  follow the cost ladder rather than reading the store whole.
+- Run the project's tests and report the actual result. Where the store records one,
+  `3-mechanics/testing` names the actual command; use it instead of guessing a runner. If they fail,
+  say so with the output rather than proceeding.
 - Keep each thread's change separately identifiable, so a reviewer can map commits back to comments.
 
 If implementing the comment as written would break something, do not silently implement a variation.

@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mcrt-knowledge-adapter"
+version = "0.5.0"
+description = "MCP server exposing a Monolithic Code Review Toolkit project knowledge store"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+authors = [{ name = "Monolith INC" }]
+
+# The only third-party dependency in this repository, and it is confined to this
+# adapter on purpose: the portable plugin and the other two adapters stay runnable
+# from a checkout with nothing installed. See ADR-0006.
+#
+# Pinned to the 2.x line: `FastMCP` was renamed `MCPServer` in mcp 2.0 and the
+# v1 import path no longer exists, so a floating major would silently break the
+# server at import time.
+dependencies = ["mcp>=2.0,<3", "pydantic>=2.7,<3"]
+
+[project.scripts]
+mcrt-knowledge-mcp = "mcrt_knowledge_mcp:main"
+
+[tool.setuptools]
+py-modules = ["mcrt_knowledge_mcp", "knowledge_store"]

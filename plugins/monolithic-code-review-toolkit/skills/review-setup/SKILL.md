@@ -5,9 +5,13 @@ description: Use once per repository, before any other review skill, to record w
 
 # Review Setup
 
-Every other skill in this toolkit needs two answers: **where do requirements live** and **where do
-pull requests live**. This skill establishes both, confirms them with the user, and writes them to
+Every other skill in this toolkit needs three answers: **where do requirements live**, **where do
+pull requests live**, and **what does this project already require of any change**. This skill
+establishes all three, confirms them with the user, and writes them to
 `.monolithic-code-review/sources.json` in the repository being reviewed.
+
+The first two are pointers to systems outside the repository. The third is the project itself, and
+it is built by `discover-project-knowledge` into a store this skill locates and records.
 
 This toolkit names no tracker vendor. Which system holds requirements is the consuming repository's
 business — Linear, Jira, Azure DevOps, YouTrack, GitHub issues, or plain files. Map whatever is
@@ -97,6 +101,36 @@ Record the result in `quality_lenses.typescript`:
 Always write `quality_lenses.maintainability: "off"`. Maintainability runs only when the user
 passes `--lenses maintainability` or `--lenses all` on a lifecycle review.
 
+### 3c. Choose where project knowledge is stored
+
+Review skills read a **project knowledge store**: a file-shaped index of what this repository is,
+how it is built, and how it is allowed to change. Without it, a review can measure a diff against
+its work item but not against the project's own architecture, conventions, or rules.
+
+Ask the user which root to use, and present the trade-off rather than picking silently:
+
+| Option | Root | Trade-off |
+| --- | --- | --- |
+| **Per-developer** | `.monolithic-code-review/knowledge/` | Beside `sources.json`, gitignored with it. No diff noise, no review burden — but each developer rebuilds it, and nobody inherits the answers the others gave |
+| **Committed anchor** | `.monolithic-code-review/knowledge/`, tracked | The team shares one store and can hand-edit it. Highest value, because human-authored identity and rules survive the person who knew them — but generated content lands in pull requests and needs a refresh policy |
+| **Inside the vault** | A directory under `vault.root`, such as `<vault.root>/Project_Knowledge/` | One knowledge home when the repository already keeps a vault. Offer this option only when step 2 found one |
+
+Record the answer as `knowledge.root` and `knowledge.committed`. If the user chooses a committed
+root, do **not** add it to `.gitignore`; if they choose per-developer, it is covered by the
+`.monolithic-code-review/` entry described in step 4.
+
+### 3d. Build the store
+
+Run `discover-project-knowledge` to populate the chosen root. That skill owns the taxonomy, the
+unit schema, and the refresh contract; this one only decides where the store lives and records it.
+
+It derives structure, mechanics and evolution from the tree, and **asks** about purpose, ownership
+and rules — those are human-authored facts, and a review that cites an invented rule is worse than
+one that cites none.
+
+A store is not required for the other skills to function. If the user declines, record
+`knowledge.root: null` and say that reviews will run without project context.
+
 ### 4. Write the configuration
 
 Write `.monolithic-code-review/sources.json` in the repository root:
@@ -139,11 +173,24 @@ Write `.monolithic-code-review/sources.json` in the repository root:
   },
   "conventions": {
     "tag_pr_author": true,
-    "work_item_pattern": "AGE-\d+"
+    "work_item_pattern": "AGE-\d+",
+    "language": "en",
+    "requirement_headings": {
+      "requirements": "## Requirements",
+      "definition_of_done": "## Definition of Done"
+    }
   },
   "quality_lenses": {
     "typescript": "mandatory",
     "maintainability": "off"
+  },
+  "knowledge": {
+    "root": ".monolithic-code-review/knowledge",
+    "committed": false,
+    "schema_version": 1,
+    "derived_from_commit": "<sha>",
+    "tiers_present": [1, 2, 3, 4, 5],
+    "mcp_server": "mcrt-knowledge"
   }
 }
 ```
@@ -164,9 +211,27 @@ Field notes:
   some teams consider it noise.
 - `conventions.work_item_pattern` — regex for finding work-item ids in branch names and commit
   messages, so later skills can infer the item under review without being told.
+- `conventions.language` — the language findings and posted pull-request comments are written in,
+  as an IETF tag such as `en` or `pt-BR`. Ask; do not infer it from the repository's prose. These
+  comments are read by a specific team.
+- `conventions.requirement_headings` — the actual heading text that carries requirements and the
+  definition of done in file-backed sources. Record what this repository uses; the defaults shown
+  are English conventions, not a contract.
+- `knowledge.root` — where the project knowledge store lives, or `null` when the user declined one.
+  Consuming skills treat `null` the same way they treat an unsupported capability: they say so once
+  and review without project context.
+- `knowledge.committed` — whether the store is tracked in version control. Decides whether the root
+  is added to `.gitignore` and whether a refresh produces reviewable diffs.
+- `knowledge.derived_from_commit` — the commit the store was last derived from. Discovery uses it to
+  refresh only the units whose inputs actually moved.
+- `knowledge.mcp_server` — the configured knowledge MCP server name when its adapter is installed.
+  Omit it when there is none; the store's layout is deterministic, so skills fall back to reading
+  `catalog.tsv` and grepping the tree.
 
 Add `.monolithic-code-review/` to the repository's `.gitignore` unless the user wants the
-configuration shared with the team. Ask.
+configuration shared with the team. Ask. When `knowledge.committed` is true and the store lives
+under `.monolithic-code-review/`, negate the store path so the configuration stays private while
+the knowledge stays shared.
 
 ### 5. Verify before declaring success
 
@@ -212,4 +277,7 @@ For file-backed sources, requirements and DoD are conventionally the `## Require
 - Every SCM capability either resolves or is listed in `scm.unsupported`.
 - `quality_lenses` reflects the TypeScript detection outcome.
 - One real work item has been fetched and shown to the user.
-- The user has confirmed the mapping and the `tag_pr_author` convention.
+- The user has confirmed the mapping, the `tag_pr_author` convention, and the finding language.
+- `knowledge.root` is either a store the user chose or an explicit `null`.
+- When a store was built: `catalog.tsv` parses, and one routing-table lookup followed by one unit
+  read returned a real unit. A store that has never been read back is not a working store.

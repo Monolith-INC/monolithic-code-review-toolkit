@@ -1,12 +1,18 @@
 # Monolithic Code Review Toolkit — Product Requirements
 
-**Status:** accepted baseline; current release: 0.4.2
+**Status:** accepted baseline; current release: 0.5.0
 **Version:** 0.1.0 (baseline)
 **Date:** 2026-08-12
 **Source brief:** `instructions.md`
 
 ## Version history
 
+- **0.5.0** — Add project knowledge: a five-tier, file-shaped store written by
+  `discover-project-knowledge`, located and recorded by `review-setup`, consulted by every other
+  skill, and served through the optional `adapters/knowledge/` MCP server. Units carry a
+  `provenance` so an inferred convention can never be reported as a project rule. Also writes
+  `conventions.language` and `conventions.requirement_headings`, which the Claude adapter workers
+  have read since 0.4.0 without either ever being produced.
 - **0.4.0** — Add the optional Claude Code review-orchestrator companion adapter: the same four
   workers, with the orchestrator as a main-session skill so worker questions reach the user and
   the answers return to the worker, and with the approval gate enforced by a `PreToolUse` hook.
@@ -40,11 +46,12 @@ quality. The unit of judgement is agreement with requirements, description, and 
 
 ## Scope
 
-Four lifecycle stages plus quality lenses and PR preparation, delivered as ten skills:
+Four lifecycle stages plus quality lenses and PR preparation, delivered as eleven skills:
 
 | Stage / mode                              | Skill                     |
 | ----------------------------------------- | ------------------------- |
 | Configuration (once per repository)       | `review-setup`            |
+| Project indexing (once, then refreshed)   | `discover-project-knowledge` |
 | Task done                                 | `review-task`             |
 | User story done — pre-flight              | `review-story-preflight`  |
 | User story done — post-flight             | `review-story-postflight` |
@@ -222,3 +229,9 @@ Recorded rather than hidden, and revisited after v0.1.0:
 - Diff hunk parsing and comment line-anchoring are performed by the agent, not by tested code.
   This is the weak point of ADR-0001 and the reason it carries a revisit trigger.
 - No slash-command surface on any host; skills are the only invocation surface.
+- A knowledge store can go stale between refreshes. Incremental refresh makes staleness detectable
+  through `derived_from_commit` and each unit's `sources`, but nothing forces a refresh, so a review
+  can cite a rule the team has since moved past. Store drift is reported under local uncertainty
+  rather than held against the diff, which contains the cost without removing it.
+- Store retrieval quality is not yet measured. The three metrics that would decide it — hit@1 on the
+  routing call, tokens-to-correct-answer, and wrong-file-confidence rate — have no harness.

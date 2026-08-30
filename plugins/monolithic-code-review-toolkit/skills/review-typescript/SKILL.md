@@ -7,11 +7,30 @@ description: TypeScript quality lens for changed .ts and .tsx code: runtime boun
 
 Use this skill for TypeScript review. The agent may invoke it during lifecycle reviews when triggered by configuration, changed `.ts`/`.tsx` scope, or `--lenses` flags, or run it standalone. It is a strictly
 read-only quality lens: it changes no source, working-tree file, Git object, index, remote, pull
-request, comment, tracker record, or persisted review state.
+request, comment, tracker record, or persisted review state. Reading the project knowledge store is
+not a mutation and is permitted; its write operations are not.
 
 It reviews changed `.ts` and `.tsx` code only. When embedded in a lifecycle review, merge only `VERIFIED` findings into the parent report lens subsection. Standalone runs produce a full TypeScript review report. It does not create generic polish findings. Read unchanged
 types, schemas, callers, tests, and runtime boundaries only when they are necessary evidence for a
 claim about the changed scope.
+
+## Project knowledge
+
+When `.monolithic-code-review/sources.json` records a `knowledge.root`, two units inform this lens.
+Follow the cost ladder — routing table, then search, then one unit — and never read the whole store.
+
+- `3-mechanics/stack` — compiler strictness, schema authority, runtime and framework versions. Use
+  it freely; it saves re-deriving from `tsconfig.json` on every run, and it tells you which
+  strictness a claim can already assume.
+- `4-rules/coding-standards` — cite a mandated or prohibited pattern **only** when that unit's
+  `provenance` is `stated`, meaning a human authored the rule. A `derived` or `assumed` pattern is
+  an observation about existing code, not a standard, and reporting one is exactly the
+  rubric-copying this lens forbids.
+
+A store entry never substitutes for evidence. The finding threshold is unchanged: the changed code
+must actually accept an invalid runtime value, make an unsound type claim, lose a reachable state,
+hide an outcome, or prevent useful diagnosis. Project knowledge tells you what the project expects;
+it does not tell you the code is wrong.
 
 ## Procedure
 

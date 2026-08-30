@@ -106,6 +106,40 @@ This keeps tracker choice out of the plugin entirely. Linear appears in this rep
 `.mcp.json` because it is how *this* project is managed, and in the provider recipes as one example
 among several — never as a dependency.
 
+## Project knowledge
+
+Requirement sources answer what a piece of work asked for. They say nothing about what the
+repository requires of any change. `discover-project-knowledge` records that separately, as a
+deterministic tree under the `knowledge.root` recorded in `sources.json`:
+
+```text
+<knowledge.root>/
+├── manifest.md      store header: schema version, derived_from_commit, tiers present
+├── catalog.tsv      routing table, regenerated from the units so the two cannot disagree
+├── 1-identity/      purpose, consumers, ownership          ← asked, never inferred
+├── 2-structure/     topology, conventions, domain, architecture
+├── 3-mechanics/     stack, dependencies, build, testing, data, contracts, runtime ops
+├── 4-rules/         coding standards, workflow, security, budgets  ← asked or quoted
+└── 5-evolution/     hotspots, debt, health, risks
+```
+
+Three properties make it usable by an agent rather than merely present:
+
+- **Progressive disclosure.** Manifest, then routing table, then unit. Retrieval is a cost ladder —
+  `catalog` (~200 tokens) → `find` (~500) → `fetch` (~800) — and no step forces a full-corpus read.
+- **Lexical addressing first.** The tree is deterministic, so `catalog.tsv` plus `grep` answers on
+  any host. A vector-only path is rejected: it has no verifiable failure mode.
+- **Provenance as a trust boundary.** `derived` and `stated` units may be cited as project rules;
+  `assumed` units are `INCONCLUSIVE` by construction. This is the same three-state evidence contract
+  the reviews already enforce, applied to the store's own claims.
+
+`adapters/knowledge/` serves the same tree over MCP with ranking, backlinks, bounded output and
+version-checked writes. It lives outside the plugin because
+[ADR-0001](../AI_Codex/Architecture/ADR/ADR-0001-skill-runtime-under-payload-allowlist.md) restricts
+a skill directory to `SKILL.md`, and it carries this repository's only third-party Python
+dependency. See
+[ADR-0006](../AI_Codex/Architecture/ADR/ADR-0006-project-knowledge-store-and-lookup-contract.md).
+
 ## Quality lenses
 
 Lifecycle reviews (`review-task`, story pre/post-flight, `review-feature`) stay requirements-first.
