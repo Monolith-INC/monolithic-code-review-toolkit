@@ -33,6 +33,24 @@ authorization. See [review-harness-contracts.md](review-harness-contracts.md).
 `pnpm payloads:verify` recompiles into a temporary directory and compares, so it checks that
 compilation is deterministic. CI runs it after `payloads:build` for that reason.
 
+## The knowledge retrieval eval
+
+`pnpm eval:knowledge` measures whether the project knowledge store actually retrieves well. It is
+**not** a gate: it is not in CI, and a red run is a signal to look, not a broken build.
+
+It proves that ranking has not regressed — rank@1, rank@3, mean reciprocal rank, per-question rank,
+ladder token cost, and the margin between a correct unit and its planted near-miss, all against a
+committed baseline. It also asserts that a links-only unit stays unreachable by search, that an
+`assumed` unit announces itself, and that an over-budget fetch truncates with a handle that advances.
+
+It does **not** prove that an agent picks the right unit, or that it declines to answer confidently
+from the wrong one. Both are judgements; `adapters/knowledge/eval/model_eval.md` is the procedure for
+measuring them with a model in the loop, and it is run by hand.
+
+Its own sensitivity is measured and recorded in `adapters/knowledge/eval/README.md`: three of five
+deliberate ranking perturbations are caught, and the two that are not change scores without
+reordering anything. Read the numbers knowing that.
+
 ## Guardrails
 
 - **`payloads/` is gitignored build output.** Never commit it, and never hand-edit it. The plugin

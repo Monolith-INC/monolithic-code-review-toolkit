@@ -17,6 +17,7 @@
     "payloads:verify": "node scripts/build_payloads.mjs verify",
     "lint:plugin": "python3.12 scripts/validate_plugin.py .",
     "test": "python3.12 -m unittest discover -s tests -t . && python3.12 -m unittest discover -s adapters/codex/tests -t . && python3.12 -m unittest discover -s adapters/claude/tests -t . && python3.12 -m unittest discover -s adapters/knowledge/tests -t .",
-    "test:knowledge": "python3.12 -m unittest discover -s adapters/knowledge/tests -t ."
+    "test:knowledge": "python3.12 -m unittest discover -s adapters/knowledge/tests -t .",
+    "eval:knowledge": "python3.12 adapters/knowledge/eval/run_eval.py"
   }
 }

@@ -234,6 +234,10 @@ Recorded rather than hidden, and revisited after v0.1.0:
   `sources` — and nothing evaluates it at read time, so a review can report a finding against a diff
   that follows the current architecture while citing a rule that stopped being true months ago.
   Tracked as `MCRT-005`.
-- Store retrieval quality is not yet measured. The three metrics that would decide it — hit@1 on the
-  routing call, tokens-to-correct-answer, and wrong-file-confidence rate — have no harness. Tracked
-  as `MCRT-001`.
+- Store retrieval quality is measured only in part. `pnpm eval:knowledge` covers ranking
+  deterministically — rank@1/@3, mean reciprocal rank, ladder token cost, and distractor margin
+  against a committed baseline. The two metrics that decide whether a review cites the right unit,
+  hit@1 on the **pick** and the wrong-file-confidence rate, are judgements with no mechanical proxy;
+  `adapters/knowledge/eval/model_eval.md` specifies how to measure them with a model, and no run has
+  been made. The eval's own sensitivity is bounded: a scoring change that reorders nothing is
+  invisible to it.

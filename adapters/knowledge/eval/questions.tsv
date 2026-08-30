@@ -1,0 +1,20 @@
+# Tier 1 evaluation question set for the knowledge retrieval harness.
+# One correct unit per question. `kind` selects the assertions the runner applies.
+#   direct       - ordinary retrieval
+#   distractor   - a planted near-miss unit shares vocabulary; margin is measured
+#   links-only   - unreachable by find; must be reached through knowledge_links
+#   assumed-trap - the best topical match is provenance: assumed and must not be citable
+#   truncated    - the unit exceeds the fetch budget; continuation must replay
+id	question	expect_unit	expect_anchor	kind	distractor_unit	notes
+q01	which layer owns currency rounding	4-rules/coding-standards	mandated	distractor	2-structure/architecture	architecture names where the helper lives; only the rules unit states the rule
+q02	payment gateway retry policy backoff	3-mechanics/runtime-ops	detail	distractor	1-identity/purpose	purpose mentions the gateway but states no policy
+q03	command that runs the test suite	3-mechanics/testing	commands	distractor	3-mechanics/build-tooling	build-tooling chains a test target; testing names the real command
+q04	who is paged when the nightly settlement job fails	1-identity/ownership	detail	distractor	5-evolution/risks	risks speculates about settlement; ownership states the rota
+q05	may we make a breaking change to the public api	3-mechanics/contracts	detail	distractor	4-rules/workflow	workflow names the review gate; contracts states the policy
+q06	how are database migrations applied	3-mechanics/data	commands	direct
+q07	latency budget for the entry write path	4-rules/nfr-budgets	mandated	direct
+q08	domain model says reversals are handled elsewhere	2-structure/settlement-context		links-only	2-structure/domain-model	target shares no query vocabulary; only the backlink reaches it
+q09	is the nightly settlement job a single point of failure	5-evolution/risks		assumed-trap		best topical match is inference; must not support a finding
+q10	runtime operations deployment observability settlement runbook	3-mechanics/runtime-ops		truncated		exceeds the fetch budget; the handle must advance
+q11	how are secrets handled	4-rules/security-compliance	mandated	direct
+q12	which files are generated rather than authored	2-structure/directory-conventions	rules	direct
