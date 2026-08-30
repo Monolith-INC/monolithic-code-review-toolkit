@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   metrics that are judgements rather than computations: hit@1 on the **pick**, and the
   wrong-file-confidence rate. `MCRT-001` had demanded both of those *and* that the harness need no
   model; that contradiction is recorded and corrected in the ticket rather than quietly resolved.
+- The harness guards its own coverage. A question named in the baseline but missing from the run
+  fails the eval, because deleting one moves no aggregate and *lowers* the token cost — the loss
+  would otherwise read as an improvement. `--update-baseline` accepts metric movement, which is
+  what it is for, but refuses to write while an assertion fails: an invariant is not a measurement,
+  and recording a broken one would retire the check that caught it.
 
 ### Changed
 

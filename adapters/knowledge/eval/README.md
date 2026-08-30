@@ -9,8 +9,14 @@ python3.12 adapters/knowledge/eval/run_eval.py --json   # machine-readable
 python3.12 adapters/knowledge/eval/run_eval.py --update-baseline
 ```
 
-Exits non-zero on a regression or a failed assertion. Dependency-free — it imports the store
-directly, so it runs wherever the store tests run.
+Exits non-zero on a regression, on a baseline question missing from the run, or on a failed
+assertion. Dependency-free — it imports the store directly, so it runs wherever the store tests run.
+
+`--update-baseline` accepts metric movement — re-recording numbers is what the flag is for, and a
+number that legitimately moved is not a defect. It still **refuses to write while an assertion
+fails**, exiting 1 and leaving the existing baseline byte-identical. The assertions are not
+measurements; they are invariants the fixture and the store must hold, so recording a broken one
+would make the breakage the new normal and retire the check that caught it.
 
 ## Two tiers, and why
 
@@ -39,6 +45,11 @@ to measure them and Tier 2 says how to.
 Four assertions are pass/fail rather than scored: the links-only target is unreachable by search and
 reachable by traversal, the assumed trap tops its question while carrying `provenance: assumed`, the
 oversized unit truncates with a handle that advances to new content, and ordering is reproducible.
+
+A question named in the baseline but absent from the run is a regression in its own right. Deleting
+one moves no aggregate and *lowers* the token cost, so without that check the loss of coverage reads
+as an improvement — which is exactly how the links-only question could have disappeared unnoticed.
+Questions the baseline does not know are the opposite case: added coverage, reported but not failed.
 
 ## Measured sensitivity
 

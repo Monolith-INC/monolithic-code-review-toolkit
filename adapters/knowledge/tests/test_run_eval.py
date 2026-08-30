@@ -134,6 +134,52 @@ class CompareTest(unittest.TestCase):
         broken.assertions["q09:assumed-trap"] = False
         self.assertIn("assertion failed: q09:assumed-trap", RUNNER.compare(broken, self.baseline))
 
+    def test_a_deleted_question_is_reported_as_removed_coverage(self):
+        """Deleting the links-only question used to pass silently.
+
+        Its baseline rank is legitimately ``None``, so the links-only exemption
+        swallowed the fact that the question was gone: the aggregates did not
+        move, the token total *fell*, and the run exited zero having lost its
+        only link-traversal assertion.
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            trimmed = Path(tmp) / "questions.tsv"
+            rows = (EVAL / "questions.tsv").read_text(encoding="utf-8").splitlines(keepends=True)
+            trimmed.write_text("".join(r for r in rows if not r.startswith("q08\t")), encoding="utf-8")
+            thinner = RUNNER.evaluate(questions_path=trimmed)
+
+        # Why this needed a check of its own: nothing else notices.
+        self.assertEqual(thinner.rank_at_1, self.baseline["rank_at_1"])
+        self.assertEqual(thinner.mrr, self.baseline["mrr"])
+        self.assertLess(thinner.total_ladder_tokens, self.baseline["total_ladder_tokens"])
+        self.assertNotIn("q08:links-only", thinner.assertions)
+
+        problems = RUNNER.compare(thinner, self.baseline)
+        self.assertTrue(any("q08" in p and "coverage was removed" in p for p in problems), problems)
+
+    def test_the_links_only_exemption_survives_for_a_question_that_ran(self):
+        """Guards the obvious wrong fix: deleting the exemption altogether.
+
+        That would reintroduce the earlier bug, where a rank of ``None`` — which
+        is correct behaviour for a links-only target — was read as the unit
+        having dropped out of the results.
+        """
+        self.assertIsNone(self.baseline["per_question_rank"]["q08"])
+        self.assertIsNone(self.result.per_question["q08"]["rank"])
+        self.assertEqual([p for p in RUNNER.compare(self.result, self.baseline) if "q08" in p], [])
+
+    def test_a_question_the_baseline_does_not_know_is_not_a_regression(self):
+        ranks = {k: v for k, v in self.baseline["per_question_rank"].items() if k != "q05"}
+        older = dict(self.baseline, per_question_rank=ranks)
+        self.assertEqual(RUNNER.compare(self.result, older), [])
+
+    def test_added_coverage_is_surfaced_even_though_it_passes(self):
+        ranks = {k: v for k, v in self.baseline["per_question_rank"].items() if k != "q05"}
+        older = dict(self.baseline, per_question_rank=ranks)
+        rendered = RUNNER.render(self.result, older)
+        self.assertIn("New questions since the baseline", rendered)
+        self.assertIn("+ q05", rendered)
+
 
 class CommandLineTest(unittest.TestCase):
     def test_a_clean_run_exits_zero(self):
@@ -142,6 +188,71 @@ class CommandLineTest(unittest.TestCase):
         )
         self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
         self.assertIn("mean reciprocal rank", completed.stdout)
+
+    def test_update_baseline_refuses_to_record_a_broken_invariant(self):
+        """A baseline accepts metric movement. It must never accept a broken invariant."""
+        with tempfile.TemporaryDirectory() as tmp:
+            copy = Path(tmp) / "knowledge"
+            shutil.copytree(ADAPTER, copy, ignore=shutil.ignore_patterns("__pycache__", "*.egg-info"))
+            baseline = copy / "eval" / "baseline.json"
+            before = baseline.read_bytes()
+
+            # Sever the only edge that reaches the links-only target. The store
+            # harvests links from the body as well as the frontmatter, so both
+            # sites have to go.
+            unit = copy / "eval" / "fixture" / "2-structure" / "domain-model.md"
+            text = unit.read_text(encoding="utf-8")
+            self.assertIn("[[2-structure/settlement-context]]", text)
+            unit.write_text(
+                text.replace("[[2-structure/settlement-context]]", "[[2-structure/conventions]]"),
+                encoding="utf-8",
+            )
+
+            completed = subprocess.run(
+                [sys.executable, str(copy / "eval" / "run_eval.py"), "--update-baseline"],
+                capture_output=True,
+                text=True,
+            )
+            after = baseline.read_bytes()
+
+        self.assertEqual(completed.returncode, 1, completed.stdout + completed.stderr)
+        self.assertIn("FAIL  q08:links-only", completed.stdout)
+        self.assertIn("Refusing to write the baseline", completed.stderr)
+        self.assertEqual(after, before, "a refused update must leave the baseline untouched")
+
+    def test_update_baseline_still_writes_on_a_clean_run(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            copy = Path(tmp) / "knowledge"
+            shutil.copytree(ADAPTER, copy, ignore=shutil.ignore_patterns("__pycache__", "*.egg-info"))
+            baseline = copy / "eval" / "baseline.json"
+            before = baseline.read_bytes()
+
+            completed = subprocess.run(
+                [sys.executable, str(copy / "eval" / "run_eval.py"), "--update-baseline"],
+                capture_output=True,
+                text=True,
+            )
+            after = baseline.read_bytes()
+
+        self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+        self.assertIn("Baseline written to", completed.stdout)
+        # The fixture has not changed, so a re-record must reproduce it exactly.
+        self.assertEqual(after, before)
+
+    def test_a_deleted_question_fails_the_command(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            copy = Path(tmp) / "knowledge"
+            shutil.copytree(ADAPTER, copy, ignore=shutil.ignore_patterns("__pycache__", "*.egg-info"))
+            questions = copy / "eval" / "questions.tsv"
+            rows = questions.read_text(encoding="utf-8").splitlines(keepends=True)
+            questions.write_text("".join(r for r in rows if not r.startswith("q08\t")), encoding="utf-8")
+
+            completed = subprocess.run(
+                [sys.executable, str(copy / "eval" / "run_eval.py")], capture_output=True, text=True
+            )
+
+        self.assertEqual(completed.returncode, 1, completed.stdout + completed.stderr)
+        self.assertIn("coverage was removed", completed.stderr)
 
     def test_a_perturbed_ranking_function_is_caught(self):
         """The end-to-end proof: break ranking, and the runner must notice."""

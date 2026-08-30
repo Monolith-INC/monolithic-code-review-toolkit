@@ -19,8 +19,12 @@ truncates with a handle that actually advances, and ordering is reproducible.
 
     python3.12 adapters/knowledge/eval/run_eval.py [--update-baseline] [--json]
 
-Exits non-zero when a measurement regresses against `baseline.json`, or when any
-assertion fails.
+Exits non-zero when a measurement regresses against `baseline.json`, when a
+question in the baseline is missing from the run, or when any assertion fails.
+
+`--update-baseline` accepts metric movement — re-recording numbers is the whole
+point of it — but still refuses to write while an assertion fails, because an
+assertion is an invariant rather than a measurement.
 """
 
 from __future__ import annotations
@@ -295,9 +299,19 @@ def compare(result: Result, baseline: dict[str, Any]) -> list[str]:
     # change can leave rank@1 untouched. Per-question ranks are what actually
     # catch that, so they are compared individually.
     for qid, recorded in baseline["per_question_rank"].items():
-        entry = result.per_question.get(qid, {})
+        entry = result.per_question.get(qid)
+        # Coverage is checked before rank, because a question that never ran has
+        # no rank to compare and every exemption below would happily swallow it.
+        # Deleting the links-only question moved no aggregate and *lowered* the
+        # token cost, so silence here reads as an improvement.
+        if entry is None:
+            problems.append(
+                f"{qid}: in the baseline but absent from this run — coverage was removed"
+            )
+            continue
         # A links-only target has no rank by design; comparing it would flag the
-        # store as regressing for behaving exactly as intended.
+        # store as regressing for behaving exactly as intended. Safe only now
+        # that the question is known to have run.
         if entry.get("kind") == "links-only" or recorded is None:
             continue
         current = entry.get("rank")
@@ -354,6 +368,14 @@ def render(result: Result, baseline: dict[str, Any] | None) -> str:
         if rank != 1 and entry["kind"] != "links-only":
             lines.append(f"        top hit was {entry['top_unit']}")
 
+    if baseline is not None:
+        added = sorted(set(result.per_question) - set(baseline.get("per_question_rank", {})))
+        if added:
+            # Added coverage is not a regression, but a reader should still see
+            # that the two question sets have diverged.
+            lines += ["", "  New questions since the baseline (not a regression):"]
+            lines += [f"    + {qid}" for qid in added]
+
     if result.margins:
         lines += ["", "  Distractor margins (correct score - decoy score):"]
         for qid, margin in sorted(result.margins.items()):
@@ -392,9 +414,25 @@ def main(argv: list[str] | None = None) -> int:
     result = evaluate()
 
     if args.update_baseline:
+        print(render(result, None))
+        failed = sorted(name for name, passed in result.assertions.items() if not passed)
+        if failed:
+            print("\nRefusing to write the baseline. Failed assertions:", file=sys.stderr)
+            for name in failed:
+                print(f"  - {name}", file=sys.stderr)
+            for problem in result.failures:
+                print(f"    {problem}", file=sys.stderr)
+            print(
+                "\nA baseline records measurements, so --update-baseline accepts metric "
+                "movement\nby design — that is what it is for. The assertions are not "
+                "measurements. They\nare invariants the fixture and the store must hold, "
+                "and recording a broken one\nwould make the breakage the new normal and "
+                "retire the check that found it.\nFix the fixture or the store, then re-run.",
+                file=sys.stderr,
+            )
+            return 1
         BASELINE.write_text(json.dumps(as_baseline(result), indent=2) + "\n", encoding="utf-8")
         print(f"Baseline written to {BASELINE}")
-        print(render(result, None))
         return 0
 
     baseline = json.loads(BASELINE.read_text(encoding="utf-8")) if BASELINE.exists() else None
