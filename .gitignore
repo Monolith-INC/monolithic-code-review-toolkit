@@ -21,6 +21,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 .pytest_cache/
+# Editable install metadata for the knowledge adapter
+*.egg-info/
+.venv/
 
 # Local editor / OS
 .idea/

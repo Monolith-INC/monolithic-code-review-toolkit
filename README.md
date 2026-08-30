@@ -14,11 +14,16 @@ Most review tooling answers "is this code good?". This answers "does this diff a
 requirements, its description, and its definition of done?" — and treats off-scope work, unmet
 acceptance criteria, and silently dropped scope as findings in their own right.
 
+Since 0.5.0 it also answers the second question a reviewer asks: **"and does it agree with how this
+project is built?"** — against a recorded project knowledge store, never against a standard the
+review invented.
+
 ## Skills
 
 | Lifecycle stage                 | Skill                     | What it does                                                                            |
 | ------------------------------- | ------------------------- | ---------------------------------------------------------------------------------------- |
-| Configure (once per repo)       | `review-setup`            | Records where requirements and pull requests live                                          |
+| Configure (once per repo)       | `review-setup`            | Records where requirements and pull requests live, and where project knowledge is stored   |
+| Configure (once, then refresh)  | `discover-project-knowledge` | Indexes the repository itself — identity, structure, mechanics, rules, evolution        |
 | Task done                       | `review-task`             | Diff vs task requirements; reports, changes nothing                                        |
 | Story done — before the PR      | `review-story-preflight`  | Whole branch vs story DoD; ends with a ready/blocked verdict                                |
 | Story done — after the PR       | `review-story-postflight` | Adversarial review of the remote diff; posts fact-checked comments                          |
@@ -89,7 +94,7 @@ Extract the payload into a skills directory. Claude Code discovers any folder th
 
 ```bash
 mkdir -p ~/.claude/skills/monolithic-code-review-toolkit
-tar -xzf monolithic-code-review-toolkit-0.4.2-claude.tar.gz \
+tar -xzf monolithic-code-review-toolkit-0.5.0-claude.tar.gz \
   --strip-components=1 -C ~/.claude/skills/monolithic-code-review-toolkit payload
 ```
 
@@ -110,7 +115,7 @@ Reload Cursor (**Developer → Reload Window**), then confirm **monolithic-code-
 enabled under **Customize**. On Teams/Enterprise, ensure **Allow Local Plugin Imports** is on if
 local plugins are blocked.
 
-Pin a specific release: `MCRT_VERSION=0.4.2 curl -fsSL ... | bash`. Manual install, marketplace
+Pin a specific release: `MCRT_VERSION=0.5.0 curl -fsSL ... | bash`. Manual install, marketplace
 `/add-plugin`, and contributor checkout paths are documented in
 [docs/architecture.md](docs/architecture.md).
 
@@ -130,7 +135,7 @@ repository-backed install, even when the checkout matches a tagged release.
 Alternatively, install from the compiled release payload:
 
 ```bash
-tar -xzf monolithic-code-review-toolkit-0.4.2-codex.tar.gz
+tar -xzf monolithic-code-review-toolkit-0.5.0-codex.tar.gz
 ```
 
 The extracted `payload/` contains `.codex-plugin/plugin.json` and `skills/`. Codex also reads the
@@ -182,12 +187,60 @@ Tagged releases also ship `monolithic-code-review-toolkit-<version>-claude-revie
 Extract it beside a trusted checkout and run the same installer from the
 extracted `adapters/claude/` directory.
 
+### Knowledge MCP adapter
+
+Optional. Serves the project knowledge store through a bounded tool surface — four read tools and
+three write tools, with ranking, backlinks, bounded output, and version-checked writes:
+
+```bash
+python3.12 -m pip install -e adapters/knowledge
+python3.12 adapters/knowledge/install_knowledge_adapter.py --project /path/to/repository
+```
+
+The store works without it. Its layout is deterministic, so `catalog.tsv` plus `grep` reaches the
+same facts on any host — lexical addressing first is the design, not a fallback. This adapter is the
+only component with third-party Python dependencies; everything else runs from a checkout with
+nothing installed. See [the adapter guide](adapters/knowledge/README.md).
+
 ### First run
 
 Run `review-setup` once per repository before anything else. It asks where your requirements live,
-detects your pull-request host, and writes `.monolithic-code-review/sources.json`. If a repository
-already has that file from an older setup run, rerun `review-setup` after upgrading so
-`quality_lenses` reflects the current TypeScript detection rules.
+detects your pull-request host, asks where project knowledge should be stored, and writes
+`.monolithic-code-review/sources.json`. It then runs `discover-project-knowledge`, which derives
+your repository's structure, mechanics and history signals from the tree and **asks** about the
+things only you know — what the project is for, who owns it, and which rules a change must respect.
+
+If a repository already has `sources.json` from an older setup run, rerun `review-setup` after
+upgrading so `quality_lenses` reflects the current TypeScript detection rules and the new
+`knowledge` and `conventions` keys are recorded.
+
+## Project knowledge
+
+Requirements say what a piece of work should do. They say nothing about what the repository already
+requires of any change — its layering rules, its mandated patterns, its real test command, which
+paths are generated. `discover-project-knowledge` records that once, in a form built for retrieval:
+
+| Tier | Holds | Established by |
+| ---- | ----- | -------------- |
+| 1 — Identity | Purpose, consumers, ownership, escalation | **Asked** — never inferred |
+| 2 — Structure | Topology, directory conventions, domain model, architecture | Derived from the tree |
+| 3 — Mechanics | Stack, dependencies, build, testing, data, contracts, runtime ops | Derived from manifests and CI |
+| 4 — Rules | Coding standards, workflow gates, security, non-functional budgets | **Asked**, or quoted from an authored doc |
+| 5 — Evolution | Churn and complexity hotspots, debt, health, risks | Derived from `git log` |
+
+Every unit records how its facts were established, and that decides how far a review may lean on it:
+
+- **`derived`** — read out of the tree, naming the files it came from. Citable.
+- **`stated`** — a human authored it, or it is quoted from an authored document. Citable.
+- **`assumed`** — inferred with no decisive evidence. `INCONCLUSIVE` by construction, never citable.
+
+Reviews treat the store as evidence, not as a finding generator: a unit raises a finding only when
+its provenance permits **and** the changed lines contradict it, and the finding cites the unit id so
+a reader can check it. When the store and the code disagree and the code is right, that is store
+drift — reported so the store gets fixed, never held against the diff.
+
+Refresh is incremental. Units name the paths they were derived from, so re-running discovery
+rewrites only what actually moved, and never overwrites a human-authored unit without asking.
 
 ## Requirement sources
 

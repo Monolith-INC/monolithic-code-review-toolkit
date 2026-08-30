@@ -7,6 +7,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-08-30
+
+### Added
+
+- **Project knowledge.** Reviews could measure a diff against its work item but
+  had no source for what the *project* requires of any change: no skill read
+  `CLAUDE.md`, a contributing guide, an ADR index, or an architecture document,
+  and the only project fact recorded was whether the repository was TypeScript.
+  `discover-project-knowledge` now indexes a repository into a file-shaped store
+  across five tiers — identity, structure, mechanics, rules, evolution — as
+  Markdown units with YAML frontmatter plus TSV for uniform records.
+- Every unit records a `provenance`. `derived` facts were read out of the tree
+  and name their sources; `stated` facts were authored by a human; `assumed`
+  facts are inferred and are `INCONCLUSIVE` by construction, so a review can
+  never report an inferred convention as a project rule. Discovery derives the
+  machine-derivable tiers and **asks** about purpose, ownership and the
+  rationale behind rules, because those are the ones worth recording and the
+  ones a machine cannot establish.
+- Incremental refresh. Units name the repository paths they were derived from,
+  so a refresh re-derives only the units whose inputs actually moved, and never
+  overwrites a human-authored unit without asking.
+- `adapters/knowledge/` — an optional MCP server exposing the store through four
+  read tools and three write tools. The read side is a stated cost ladder
+  (`knowledge_catalog` → `knowledge_find` → `knowledge_fetch`); hits carry
+  `matched_terms` so a bad query is self-diagnosable; empty results return the
+  facet values and near-miss terms that do exist; a version conflict returns the
+  current content and a failed patch returns the surrounding text, so a retry
+  happens in the same turn; output is bounded with an explicit continuation
+  handle; ordering is deterministic.
+
+### Changed
+
+- `review-setup` asks where the store should live — per-developer, committed and
+  shared with the team, or inside an existing vault — and records the choice as
+  `knowledge.root`. It then runs discovery.
+- All nine non-setup skills consult the store. The four lifecycle reviews share
+  one "Project knowledge" section; the quality lenses, PR preparation, comment
+  triage and comment response each reach for the tiers they actually need.
+  Project knowledge is evidence for a finding, never a finding generator: a unit
+  raises one only when its provenance permits and the changed lines contradict
+  it, and the finding cites the unit id.
+- The store is reachable without the adapter. Its layout is deterministic, so
+  `catalog.tsv` plus `grep` satisfies the same ladder — lexical addressing first
+  is a design requirement, not a degradation.
+- Read-only skills say explicitly that reading the store is not a mutation, and
+  hold no write tools.
+- `review-typescript` gets the narrowest slice on purpose: stack facts freely,
+  but a coding standard only where a human authored it, so the lens cannot drift
+  back into the rubric-copying it forbids.
+
+### Fixed
+
+- `review-setup` now writes `conventions.language` and
+  `conventions.requirement_headings`. The Claude adapter's validator, adversarial
+  and poster workers have read both since 0.4.0 — to choose the language a
+  posted comment is written in, and to avoid assuming English requirement
+  headings — and neither key was ever produced.
+
 ## [0.4.2] - 2026-08-27
 
 ### Fixed

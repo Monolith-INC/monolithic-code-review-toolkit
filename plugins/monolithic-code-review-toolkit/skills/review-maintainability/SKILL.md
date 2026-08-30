@@ -7,11 +7,28 @@ description: Maintainability quality lens for changed code: structural simplific
 
 Use this skill for a maintainability review. The agent invokes it when the user passes `--lenses maintainability` or `--lenses all` on a lifecycle review, or when run standalone. It is a
 strictly read-only quality lens: it changes no source, working-tree file, Git object, index,
-remote, pull request, comment, tracker record, or persisted review state.
+remote, pull request, comment, tracker record, or persisted review state. Reading the project
+knowledge store is not a mutation and is permitted; its write operations are not.
 
 It never runs silently during lifecycle review. When embedded, merge only `VERIFIED` findings into the parent report lens subsection. Do not turn generic polish into findings. The review boundary is the
 changed scope the user identifies or the agreed diff range; unchanged code may be read only as
 context for a changed-line finding.
+
+## Project knowledge
+
+When `.monolithic-code-review/sources.json` records a `knowledge.root`, read the documented
+structure before judging the changed structure. Follow the cost ladder — routing table, then search,
+then one unit — and never read the whole store.
+
+- `2-structure/architecture` — layers, dependency rules, and key abstractions. This is what turns a
+  boundary-ownership finding from an inference about intent into a check against a stated rule.
+- `2-structure/domain-model` — entities, invariants, and bounded contexts, for deciding which layer
+  legitimately owns a rule.
+
+Cite the unit `id` when a finding rests on it, and apply the same provenance gate as every other
+skill: `derived` and `stated` units support a finding, `assumed` units are `INCONCLUSIVE` and stay
+in local uncertainty. Where the documented architecture and the code disagree and the code is
+right, report the drift under local uncertainty rather than holding the diff to a stale rule.
 
 ## Procedure
 

@@ -30,6 +30,13 @@ jobs:
         run: python -m unittest discover -s adapters/codex/tests -t . -v
       - name: Run Claude adapter tests
         run: python -m unittest discover -s adapters/claude/tests -t . -v
+      # The knowledge adapter is the only component with third-party dependencies.
+      # Installing them here is what keeps its MCP contract tests from silently
+      # skipping: the suite degrades to store-only coverage without the SDK.
+      - name: Install knowledge adapter dependencies
+        run: python -m pip install -e adapters/knowledge
+      - name: Run knowledge adapter tests
+        run: python -m unittest discover -s adapters/knowledge/tests -t . -v
 
   # Template conformance. Builds the pinned agent-plugins-toolkit and runs its
   # own validator and payload verifier against our plugin root — this is the

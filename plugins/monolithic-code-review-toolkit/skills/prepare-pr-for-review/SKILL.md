@@ -8,9 +8,24 @@ description: Use when a user wants a read-only reviewability map of a pending pu
 This skill makes a change set easier for a human to navigate. It is not a correctness review,
 maintainability audit, or automatic cleanup tool. Its default workflow is **strictly read-only**:
 it changes no Git object, no working-tree file, no remote branch, pull request, or tracker record.
+Reading the project knowledge store is not a mutation and is permitted; its write operations are not.
 
 Use it before a pull request is opened or while its description and history are still being
 prepared. Run lifecycle review skills separately when the user wants findings about requirements.
+
+## Project knowledge
+
+When `.monolithic-code-review/sources.json` records a `knowledge.root`, three units replace guesses
+this skill would otherwise make per run. Follow the cost ladder and read only what a question needs.
+
+- `2-structure/directory-conventions` — which paths are authored, generated, or vendored. Prefer it
+  over inferring a generator from file contents, and say which source you used.
+- `3-mechanics/build-tooling` — the code generator and task runner behind a generated path.
+- `4-rules/workflow` — the branching model and commit convention, so commit-legibility observations
+  cite the project's actual rule rather than a general preference.
+
+This remains an orientation skill: a store entry can classify a path or ground an observation, but
+it never becomes a correctness finding here.
 
 ## Procedure
 
