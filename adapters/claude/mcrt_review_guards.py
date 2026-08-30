@@ -20,14 +20,12 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-REVIEW_SKILLS = {
-    "task": "review-task",
-    "story-preflight": "review-story-preflight",
-    "story-postflight": "review-story-postflight",
-    "feature": "review-feature",
-    "pr-preparation": "prepare-pr-for-review",
-    "pr-comment-triage": "triage-pr-comments",
-}
+ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from core.review_harness.contracts import REVIEW_SKILLS, ROLE_IDS, SOURCES_SCHEMA_VERSION, WRITE_CAPABILITIES
+
 SKILL_NAMESPACE = "monolithic-code-review-toolkit"
 PENDING_STATUSES = {"running", "pending_input", "pending_approval"}
 PHASE_RESULT_REQUIRED = {

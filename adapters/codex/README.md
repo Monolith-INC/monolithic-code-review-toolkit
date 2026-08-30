@@ -25,8 +25,9 @@ uninstall:
 python3.12 adapters/codex/install_codex_adapter.py --scope project --project /path/to/repository --uninstall
 ```
 
-Restart Codex after installation. This release documents the adapter only; it
-does not install it into any consumer repository.
+Restart Codex after installation. The installer adds an `mcrt-review` entry
+skill as well as the custom agents, so the root session has a stable invocation
+surface rather than needing to remember the orchestrator name.
 
 Tagged releases include `monolithic-code-review-toolkit-<version>-codex-review-orchestrator.tar.gz`.
 After extracting it, run the same command from the extracted `adapters/codex/`
@@ -73,8 +74,18 @@ workflow.
   threads, edit source, commit, or create tracker writes.
 
 Azure DevOps, GitHub, and other providers work only when `review-setup` has
-recorded their real SCM and requirement capabilities in
-`.monolithic-code-review/sources.json`.
+recorded their real SCM and requirement capabilities in the typed
+`.monolithic-code-review/sources.json` v2 contract. See
+[`docs/review-harness-contracts.md`](../../docs/review-harness-contracts.md).
+
+## Host action gate
+
+The installer registers synchronous Codex `PreToolUse` and `PostToolUse` hook
+entries. The pre-hook translates Codex's workspace, agent identity and tool
+payload into the product-owned deterministic gate. An MCRT-marked write must
+match a configured capability binding, the checkpoint's repository/PR/binding
+digest, and an unused approved finding id; a denial exits with code `2`.
+Unrelated manual comments remain outside this gate.
 
 ## Deterministic utilities
 

@@ -58,7 +58,9 @@ with the user.
 | `post_summary_comment`     | create a general PR comment |
 | `reply_to_review_thread`   | reply to an existing review thread |
 
-Concrete values may be MCP tool names or command templates. Authentication checks are
+Concrete values are schema-bound capability bindings, never opaque tool names or shell snippets.
+Use `mcp_tool` (`server` + `tool`), `command` (`program` + argv `args`), or bounded `path`
+bindings with the logical capability's fixed `access` and `effect`. Authentication checks are
 provider-specific: for example `gh auth status` for GitHub or `az account show` plus
 `az devops configure --list` for Azure DevOps.
 
@@ -137,19 +139,16 @@ Write `.monolithic-code-review/sources.json` in the repository root:
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "scm": {
     "provider": "github",
     "owner": "<owner>",
     "repo": "<repo>",
     "capabilities": {
-      "get_pull_request": "gh pr view {pr} -R {owner}/{repo} --json title,body,baseRefName,headRefName,headRefOid,author,files",
-      "get_pull_request_diff": "gh pr diff {pr} -R {owner}/{repo}",
-      "list_review_threads": "gh api graphql ...",
-      "list_conversation_comments": "gh api repos/{owner}/{repo}/issues/{pr}/comments --paginate",
-      "post_inline_comment": "gh api repos/{owner}/{repo}/pulls/{pr}/comments ...",
-      "post_summary_comment": "gh pr comment {pr} -R {owner}/{repo} --body-file {file}",
-      "reply_to_review_thread": "gh api repos/{owner}/{repo}/pulls/{pr}/comments ..."
+      "get_pull_request": {"kind": "command", "program": "gh", "args": ["pr", "view", "{pull_request_id}"], "access": "read", "effect": "scm.pull_request.read"},
+      "get_pull_request_diff": {"kind": "command", "program": "gh", "args": ["pr", "diff", "{pull_request_id}"], "access": "read", "effect": "scm.pull_request.read"},
+      "post_inline_comment": {"kind": "mcp_tool", "server": "github", "tool": "post_inline_comment", "access": "write", "effect": "scm.comment.create"},
+      "post_summary_comment": {"kind": "command", "program": "gh", "args": ["pr", "comment", "{pull_request_id}", "--body-file", "{body_file}"], "access": "write", "effect": "scm.comment.create"}
     },
     "unsupported": []
   },
@@ -158,9 +157,9 @@ Write `.monolithic-code-review/sources.json` in the repository root:
     "label": "Linear",
     "authoritative": true,
     "capabilities": {
-      "fetch_work_item": "mcp__linear__get_issue",
-      "fetch_parent": "mcp__linear__get_issue",
-      "list_linked_artifacts": "mcp__linear__list_documents"
+      "fetch_work_item": {"kind": "mcp_tool", "server": "linear", "tool": "get_issue", "access": "read", "effect": "tracker.work_item.read"},
+      "fetch_parent": {"kind": "mcp_tool", "server": "linear", "tool": "get_issue", "access": "read", "effect": "tracker.work_item.read"},
+      "list_linked_artifacts": {"kind": "mcp_tool", "server": "linear", "tool": "list_documents", "access": "read", "effect": "tracker.artifact.read"}
     },
     "scope": { "team": "AGE" },
     "unsupported": []
@@ -198,13 +197,14 @@ Write `.monolithic-code-review/sources.json` in the repository root:
 Field notes:
 
 - `scm.provider` — the provider detected for this repository, such as `github` or `azure-devops`.
-- `scm.capabilities` — concrete tool names or command templates for this repository's provider;
-  downstream PR skills execute these mappings instead of assuming a CLI.
+- `scm.capabilities` — typed, validated provider bindings for this repository. The core contract
+  fixes each capability's access and effect; downstream PR skills execute the recorded binding
+  instead of assuming a CLI. See `docs/review-harness-contracts.md`.
 - `scm.unsupported` — SCM capabilities that could not be mapped. Dependent skills must degrade
   honestly and must not silently use another provider.
 - `tracker.kind` — `mcp`, `cli`, `files`, or `none`.
-- `tracker.capabilities` — concrete tool names or path templates, never vendor labels. A `files`
-  tracker uses path templates such as `AI_Codex/Tickets/**/{id}*.md`.
+- `tracker.capabilities` — typed, validated bindings with the same contract as SCM. A `files`
+  tracker uses a bounded `path` binding such as `AI_Codex/Tickets/**/{work_item_id}*.md`.
 - `tracker.unsupported` — capabilities this source cannot answer. Dependent skills must say so rather
   than proceed on assumption.
 - `conventions.tag_pr_author` — whether posted PR comments `@`-mention the author. Ask the user;

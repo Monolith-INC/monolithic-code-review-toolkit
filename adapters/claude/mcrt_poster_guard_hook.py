@@ -27,6 +27,13 @@ import sys
 from pathlib import Path
 from typing import Any
 
+ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from core.review_harness.checkpoints import CheckpointError, authorize
+from core.review_harness.contracts import ContractError, binding_digest, validate_sources
+
 GUARDED_TOOL_PATTERN = re.compile(
     r"pull_request_thread_write|pull_request_comment|issue_comment|pr_comment",
     re.IGNORECASE,
@@ -92,7 +99,59 @@ def has_run_in_flight(checkpoints: list[dict[str, Any]]) -> bool:
     return any(checkpoint.get("status") in PENDING_STATUSES for checkpoint in checkpoints)
 
 
+def _v2_sources(workspace: Path) -> dict[str, Any] | None:
+    try:
+        return validate_sources(json.loads((workspace / ".monolithic-code-review" / "sources.json").read_text(encoding="utf-8")))
+    except (OSError, json.JSONDecodeError, ContractError):
+        return None
+
+
+def _v2_checkpoint_path(workspace: Path) -> Path | None:
+    paths = sorted((workspace / ".monolithic-code-review" / "orchestrator").glob("checkpoint-*.json"))
+    return paths[-1] if paths else None
+
+
+def _v2_matches_write(sources: dict[str, Any], tool_name: str, tool_input: dict[str, Any]) -> bool:
+    for binding in sources["scm"].get("capabilities", {}).values():
+        if binding.get("access") != "write":
+            continue
+        if binding.get("kind") == "mcp_tool" and tool_name == f"mcp__{binding['server']}__{binding['tool']}":
+            return True
+    return tool_name == "Bash" and bool(marked_ids(extract_content(tool_input)))
+
+
+def _evaluate_v2(tool_name: str, tool_input: dict[str, Any], workspace: Path) -> str | None:
+    """Use the product gate whenever the project has migrated to sources v2."""
+    sources = _v2_sources(workspace)
+    ids = marked_ids(extract_content(tool_input))
+    if sources is None or not ids or not _v2_matches_write(sources, tool_name, tool_input):
+        return None
+    path = _v2_checkpoint_path(workspace)
+    if path is None:
+        return "MCRT-marked action has no approval checkpoint"
+    repository = f"{sources['scm'].get('owner', '')}/{sources['scm'].get('repo', '')}".strip("/")
+    event = {
+        "mcrt": True,
+        "finding_ids": ids,
+        "workspace": str(workspace),
+        "repository": repository,
+        "pull_request_id": str(tool_input.get("pull_request_id", tool_input.get("pr", ""))),
+        "binding_digest": binding_digest(sources),
+    }
+    try:
+        decision = authorize(path, event)
+    except CheckpointError as error:
+        return str(error)
+    return None if decision.allowed else decision.reason
+
+
 def evaluate(tool_name: str, tool_input: dict[str, Any], workspace: Path) -> str | None:
+    sources = _v2_sources(workspace)
+    ids = marked_ids(extract_content(tool_input))
+    if sources is not None and ids:
+        if not _v2_matches_write(sources, tool_name, tool_input):
+            return "MCRT-marked action does not match a registered write capability"
+        return _evaluate_v2(tool_name, tool_input, workspace)
     if not is_guarded(tool_name, tool_input):
         return None
     checkpoints = load_checkpoints(workspace)
