@@ -140,6 +140,13 @@ class ClaudeGuardV2Test(unittest.TestCase):
         )
         self.assertIsNotNone(reason, "a malformed v2 document must fail closed")
 
+    def test_a_malformed_v2_document_denies_a_review_creation_write(self):
+        root = self.workspace('{"version": 2, "scm": {"capabilities": 5, "unsupported": []}, "tracker": {}}')
+        reason = HOOK.evaluate(
+            "mcp__github__create_review", {"body": "ordinary review", "pull_request_id": "42"}, root,
+        )
+        self.assertIsNotNone(reason, "a malformed v2 document must fail closed for review creation")
+
     def test_a_malformed_v2_document_leaves_ordinary_work_alone(self):
         root = self.workspace('{"version": 2, "scm": {"capabilities": 5, "unsupported": []}, "tracker": {}}')
         self.assertIsNone(HOOK.evaluate("Read", {"file_path": "README.md"}, root))

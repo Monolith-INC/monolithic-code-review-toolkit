@@ -23,7 +23,10 @@ RECORD_NAME = "mcrt-claude-review-adapter-install.json"
 # wide enough to reach the hook: it filters exactly, against the registered write
 # bindings. It must route every comment/thread write tool name a binding can name,
 # including mcp__<server>__post_comment.
-DEFAULT_HOOK_MATCHER = "Bash|.*comment.*|.*pull_request.*|.*review_thread.*|.*thread_write.*"
+DEFAULT_HOOK_MATCHER = (
+    "Bash|.*comment.*|.*pull_request.*|.*review_thread.*|.*thread_write.*|"
+    ".*create_review.*|.*post_review.*|.*submit_review.*|.*add_review.*|.*write_review.*"
+)
 ADAPTER_ROOT_PLACEHOLDER = "__MCRT_ADAPTER_ROOT__"
 SCM_TOOLS_PLACEHOLDER = "__MCRT_SCM_TOOLS__"
 SCM_READ_TOOLS_PLACEHOLDER = "__MCRT_SCM_READ_TOOLS__"

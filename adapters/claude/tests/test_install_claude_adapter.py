@@ -87,7 +87,12 @@ class ConfigEditTest(unittest.TestCase):
         """The guarded surface is data-driven now, so the matcher must be wide
         enough to reach the hook, which does the exact filtering itself."""
         matcher = INSTALL.DEFAULT_HOOK_MATCHER
-        for tool in ("Bash", "mcp__github__post_comment", "mcp__azure__pull_request_thread_write"):
+        for tool in (
+            "Bash",
+            "mcp__github__post_comment",
+            "mcp__azure__pull_request_thread_write",
+            "mcp__github__create_review",
+        ):
             with self.subTest(tool=tool):
                 self.assertTrue(re.search(matcher, tool), f"{matcher!r} does not route {tool}")
 

@@ -54,7 +54,8 @@ from core.review_harness.contracts import (
 )
 
 GUARDED_TOOL_PATTERN = re.compile(
-    r"pull_request_thread_write|pull_request_comment|issue_comment|pr_comment|post_comment",
+    r"pull_request_thread_write|pull_request_comment|issue_comment|pr_comment|post_comment|"
+    r"create_review|post_review|submit_review|add_review|write_review",
     re.IGNORECASE,
 )
 GUARDED_COMMAND_PATTERN = re.compile(
