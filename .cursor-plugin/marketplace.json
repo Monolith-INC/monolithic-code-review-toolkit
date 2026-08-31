@@ -11,7 +11,7 @@
       "name": "monolithic-code-review-toolkit",
       "source": "plugins/monolithic-code-review-toolkit",
       "description": "Code review skills for every stage of the work lifecycle: task, user story, feature, and pull request comment handling.",
-      "version": "0.5.0"
+      "version": "0.6.0"
     }
   ]
 }
