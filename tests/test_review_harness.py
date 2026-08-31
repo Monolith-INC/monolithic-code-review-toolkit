@@ -3,6 +3,7 @@ from __future__ import annotations
 import tempfile
 import unittest
 import json
+from copy import deepcopy
 from pathlib import Path
 
 from core.review_harness.checkpoints import CheckpointError, abandon, authorize, create, inspect, record_outcome, resume
@@ -63,6 +64,105 @@ class SourcesContractTest(unittest.TestCase):
         migrated, diagnostics = migrate_sources_v1(v1)
         self.assertIsNone(migrated)
         self.assertTrue(diagnostics)
+
+
+    def test_a_non_iterable_capability_map_raises_contract_error(self):
+        for malformed in (5, None, True, 1.5):
+            with self.subTest(capabilities=malformed):
+                value = sources()
+                value["scm"]["capabilities"] = malformed
+                with self.assertRaises(ContractError):
+                    validate_sources(value)
+
+    def test_a_malformed_unsupported_list_raises_contract_error(self):
+        for malformed in ("post_inline_comment", 7, {"post_inline_comment": True}, ["post_inline_comment", 3]):
+            with self.subTest(unsupported=malformed):
+                value = sources()
+                value["scm"]["unsupported"] = malformed
+                with self.assertRaises(ContractError):
+                    validate_sources(value)
+
+    def test_a_capability_declared_in_the_wrong_area_is_rejected(self):
+        value = sources()
+        value["tracker"]["capabilities"]["post_inline_comment"] = {
+            "kind": "mcp_tool", "server": "github", "tool": "post_comment",
+            "access": "write", "effect": "scm.comment.create",
+        }
+        with self.assertRaises(ContractError):
+            validate_sources(value)
+
+        value = sources()
+        value["scm"]["capabilities"]["fetch_work_item"] = {
+            "kind": "mcp_tool", "server": "tracker", "tool": "get_item",
+            "access": "read", "effect": "tracker.work_item.read",
+        }
+        with self.assertRaises(ContractError):
+            validate_sources(value)
+
+    def test_a_write_capability_cannot_be_bound_to_a_path(self):
+        value = sources()
+        value["scm"]["capabilities"]["post_inline_comment"] = {
+            "kind": "path", "path": "docs/comment.md",
+            "access": "write", "effect": "scm.comment.create",
+        }
+        with self.assertRaises(ContractError):
+            validate_sources(value)
+
+    def test_a_binding_cannot_declare_the_wrong_access_for_its_capability(self):
+        value = sources()
+        value["scm"]["capabilities"]["post_inline_comment"]["access"] = "read"
+        with self.assertRaises(ContractError):
+            validate_sources(value)
+
+        value = sources()
+        value["scm"]["capabilities"]["get_pull_request"]["access"] = "write"
+        with self.assertRaises(ContractError):
+            validate_sources(value)
+
+    def test_migration_refuses_every_shell_composition_shape(self):
+        composed = (
+            "gh pr comment 1 --body x; echo done",
+            "gh pr comment 1 --body x | tee log",
+            "gh pr comment 1 --body x && rm -rf /tmp/x",
+            "gh pr comment 1 --body x || true",
+            "gh pr comment 1 --body x > /tmp/out",
+            "gh pr comment 1 --body x >> /tmp/out",
+            "gh pr comment 1 --body x < /tmp/in",
+            "gh pr comment 1 --body `whoami`",
+            "gh pr comment 1 --body $(whoami)",
+            "gh pr comment 1 --body ${HOME}",
+            "gh pr comment 1 --body (x)",
+            "gh pr comment 1 --body x\necho done",
+            "gh pr comment 1 --body x &",
+        )
+        for raw in composed:
+            with self.subTest(raw=raw):
+                v1 = {
+                    "version": 1,
+                    "scm": {"capabilities": {"post_inline_comment": raw}, "unsupported": []},
+                    "tracker": {"capabilities": {}, "unsupported": []},
+                }
+                migrated, diagnostics = migrate_sources_v1(v1)
+                self.assertIsNone(migrated, f"{raw!r} was migrated into a typed binding")
+                self.assertTrue(diagnostics)
+
+    def test_an_ambiguous_migration_reports_rerun_review_setup_and_changes_nothing(self):
+        v1 = {
+            "version": 1,
+            "scm": {
+                "capabilities": {
+                    "post_inline_comment": "gh pr comment 1 --body x && echo done",
+                    "get_pull_request": "mcp__github__get_pull_request",
+                },
+                "unsupported": [],
+            },
+            "tracker": {"capabilities": {}, "unsupported": []},
+        }
+        before = deepcopy(v1)
+        migrated, diagnostics = migrate_sources_v1(v1)
+        self.assertIsNone(migrated)
+        self.assertEqual(v1, before, "an ambiguous document must not be partially migrated")
+        self.assertTrue(any("rerun review-setup" in item for item in diagnostics))
 
 
 class GateTest(unittest.TestCase):
