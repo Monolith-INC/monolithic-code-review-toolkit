@@ -42,6 +42,16 @@ than no guard. `evaluate_quota` and its pause states are absent by design.
 
 ## Install
 
+`scripts/install-claude.sh` stages this adapter under `~/.claude/mcrt/adapters/claude`,
+with the shared `core/` runtime beside it at `~/.claude/mcrt/core`, and records
+it in `~/.claude/mcrt/install.json`. When it does, `review-setup` offers to run
+the installer below for the repository you are in, with the provider flags
+derived from the SCM mapping it just recorded — which is the error-prone part of
+this install and the reason the offer lives there.
+
+Everything below still applies, and is the path to use from a checkout, from an
+extracted release archive, or when installing at user scope.
+
 Install the plugin using the normal marketplace or release-payload method first.
 Then install this adapter into the Claude scope you want:
 

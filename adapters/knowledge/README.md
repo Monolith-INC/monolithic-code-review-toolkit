@@ -19,6 +19,12 @@ points it at `knowledge.root` from `.monolithic-code-review/sources.json`. Pass 
 to override, `--dry-run` to see the planned edit, or `--uninstall` to remove it. Uninstalling never
 touches the store itself.
 
+`scripts/install-claude.sh` stages this adapter under `~/.claude/mcrt/adapters/knowledge` and marks
+it `requires_pip` in `~/.claude/mcrt/install.json`. It deliberately stops there: the `pip` line
+above writes into whichever Python environment is active, and a piped installer has no human to ask
+which one that should be. `review-setup` asks, then runs both lines — or registers nothing, since a
+server entry that cannot start is worse than no entry.
+
 This is the only part of the toolkit with third-party Python dependencies (`mcp`, `pydantic`). The
 portable plugin and the two review-orchestrator adapters still run from a checkout with nothing
 installed — see [ADR-0006](../../AI_Codex/Architecture/ADR/ADR-0006-project-knowledge-store-and-lookup-contract.md).

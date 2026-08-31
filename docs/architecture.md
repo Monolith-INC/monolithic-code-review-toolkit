@@ -76,7 +76,9 @@ belongs to each host. Payloads are released as per-host archives and installed t
 mechanism. For Claude Code that is skills-directory discovery: a folder containing
 `.claude-plugin/plugin.json` under `~/.claude/skills/` or `<repo>/.claude/skills/` loads as
 `<name>@skills-dir` with no marketplace and no install step — so nothing has to be hand-authored to
-make the payload installable. For Cursor, end users run `scripts/install-cursor.sh` (or the
+make the payload installable. `scripts/install-claude.sh` performs that extraction from the latest
+release, so the README no longer documents a tarball command carrying a version that goes stale.
+For Cursor, end users run `scripts/install-cursor.sh` (or the
 documented one-liner in README) to install the latest release payload into
 `~/.cursor/plugins/local/<name>/`; GitHub marketplace installs resolve
 `.cursor-plugin/marketplace.json` against the committed portable root.
@@ -183,6 +185,45 @@ rerun `review-setup` after upgrading the toolkit so TypeScript detection and the
 
 Post-flight reviews run lens passes before user confirmation so lens findings appear in the approval
 table and follow the same write gate as requirements findings.
+
+### Claude Code installation
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Monolith-INC/monolithic-code-review-toolkit/main/scripts/install-claude.sh | bash
+```
+
+`scripts/install-claude.sh` resolves the latest GitHub release, replaces
+`~/.claude/skills/monolithic-code-review-toolkit` with the Claude payload, verifies the manifest and
+skill directories, then stages the review-orchestrator and knowledge adapters under
+`~/.claude/mcrt/` and writes `~/.claude/mcrt/install.json`.
+
+Adapter archives are extracted **whole**, not plucked apart. The orchestrator archive carries
+`adapters/claude/` and `core/` together, and the adapter resolves the shared runtime as
+`parents[2]/core` — so the archive's own layout is already the correct staged layout. Staging that
+dropped `core/` would leave a poster guard that raises at import; the host treats a non-zero
+`PreToolUse` hook as a non-blocking error, so the approval gate would silently permit every guarded
+write. The installer therefore refuses to finish when an adapter imports `core` and none was staged.
+
+That manifest is the contract `review-setup` reads: `schema_version`, `host`, `version`,
+`plugin_root`, `python`, and an `adapters` map whose entries carry `root`, `installer`, `scope`, and
+`requires_pip`. It lists only adapters actually staged, so a release predating an adapter degrades to
+a warning and an install that describes itself accurately, rather than an offer to run something
+absent.
+
+Two further behaviours are deliberate. `MCRT_ADAPTERS` rejects an unknown name before writing
+anything, because a typo would otherwise yield an install that looks complete and lacks the
+requested adapter. And the script is written for bash 3.2 — no arrays, no `mapfile` — since macOS
+still ships it and `curl | bash` runs whatever bash is first on `PATH`.
+
+**Staging an adapter and wiring it are separate acts.** The companion adapters live outside the
+payload allowlist, so a host installer can only place their sources on disk and record a manifest.
+Wiring belongs to `review-setup`, and not merely for convenience: the orchestrator's provider flags
+are a function of the SCM capability mapping that skill produces, and the knowledge server's root is
+the store root it just chose. An installer piped through `curl | bash` also has no user to ask, and
+both wiring steps need consent — one edits host configuration, the other installs third-party Python
+dependencies. So the installer never touches a repository, never runs `pip`, and never downloads
+anything at review-setup time; `review-setup` never fetches an adapter, only runs installers already
+present.
 
 ### Cursor installation
 
