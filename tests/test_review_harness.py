@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import tempfile
 import unittest
 import unittest.mock
@@ -7,7 +8,17 @@ import json
 from copy import deepcopy
 from pathlib import Path
 
-from core.review_harness.checkpoints import CheckpointError, abandon, authorize, create, inspect, record_outcome, resume
+from core.review_harness.checkpoints import (
+    CheckpointError,
+    abandon,
+    authorize,
+    create,
+    directory,
+    find_active_checkpoint,
+    inspect,
+    record_outcome,
+    resume,
+)
 from core.review_harness import contracts
 from core.review_harness.contracts import (
     ContractError,
@@ -361,3 +372,186 @@ class GateTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ActiveCheckpointTest(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.identity = {
+            "workspace": str(self.root), "repository": "acme/widgets",
+            "pull_request_id": "42", "binding_digest": "digest",
+        }
+
+    def test_no_checkpoint_directory_has_no_active_checkpoint(self):
+        self.assertIsNone(find_active_checkpoint(self.root))
+
+    def test_the_active_checkpoint_wins_over_a_lexicographically_later_terminal_one(self):
+        path = create(self.root, self.identity, ["f1"])
+        live = json.loads(path.read_text(encoding="utf-8"))
+        folder = directory(self.root)
+        low = folder / "checkpoint-0000000000000000.json"
+        path.rename(low)
+        (folder / "checkpoint-ffffffffffffffff.json").write_text(
+            json.dumps(dict(live, status="abandoned")), encoding="utf-8"
+        )
+        self.assertEqual(find_active_checkpoint(self.root), low)
+
+    def test_two_active_checkpoints_are_ambiguous(self):
+        path = create(self.root, self.identity, ["f1"])
+        live = json.loads(path.read_text(encoding="utf-8"))
+        (directory(self.root) / "checkpoint-ffffffffffffffff.json").write_text(
+            json.dumps(live), encoding="utf-8"
+        )
+        with self.assertRaises(CheckpointError):
+            find_active_checkpoint(self.root)
+
+    def test_a_malformed_checkpoint_is_not_silently_ignored(self):
+        create(self.root, self.identity, ["f1"])
+        (directory(self.root) / "checkpoint-ffffffffffffffff.json").write_text("{", encoding="utf-8")
+        with self.assertRaises(CheckpointError):
+            find_active_checkpoint(self.root)
+
+
+class CheckpointLifecycleTest(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.identity = {
+            "workspace": str(self.root), "repository": "acme/widgets",
+            "pull_request_id": "42", "binding_digest": "digest",
+        }
+
+    def event(self, tool_use_id: str, *finding_ids: str) -> dict:
+        return dict(self.identity, mcrt=True, role="poster", finding_ids=list(finding_ids), tool_use_id=tool_use_id)
+
+    def test_an_authorization_keeps_the_checkpoint_approved(self):
+        path = create(self.root, self.identity, ["f1", "f2"])
+        self.assertTrue(authorize(path, self.event("call-1", "f1")).allowed)
+        checkpoint = inspect(path)
+        self.assertEqual(checkpoint["status"], "approved")
+        self.assertEqual(checkpoint["attempted_finding_ids"], ["f1"])
+        self.assertIn("call-1", checkpoint["pending_posts"])
+
+    def test_every_approved_finding_can_be_authorized_in_turn(self):
+        path = create(self.root, self.identity, ["f1", "f2"])
+        self.assertTrue(authorize(path, self.event("call-1", "f1")).allowed)
+        record_outcome(path, "call-1", True)
+        second = authorize(path, self.event("call-2", "f2"))
+        self.assertTrue(second.allowed, second.reason)
+
+    def test_an_authorization_requires_a_tool_use_id(self):
+        path = create(self.root, self.identity, ["f1"])
+        event = self.event("", "f1")
+        with self.assertRaises(CheckpointError):
+            authorize(path, event)
+
+    def test_an_outcome_must_match_a_pending_authorization(self):
+        path = create(self.root, self.identity, ["f1"])
+        authorize(path, self.event("call-1", "f1"))
+        with self.assertRaises(CheckpointError):
+            record_outcome(path, "some-other-call", True)
+        self.assertEqual(inspect(path)["status"], "approved")
+
+    def test_the_run_completes_only_after_every_approved_finding_succeeded(self):
+        path = create(self.root, self.identity, ["f1", "f2"])
+        authorize(path, self.event("call-1", "f1"))
+        record_outcome(path, "call-1", True)
+        self.assertEqual(inspect(path)["status"], "approved")
+        authorize(path, self.event("call-2", "f2"))
+        record_outcome(path, "call-2", True)
+        self.assertEqual(inspect(path)["status"], "completed")
+
+    def test_one_authorization_covering_every_finding_completes_the_run(self):
+        path = create(self.root, self.identity, ["f1", "f2"])
+        authorize(path, self.event("call-1", "f1", "f2"))
+        record_outcome(path, "call-1", True)
+        self.assertEqual(inspect(path)["status"], "completed")
+
+    def test_a_provider_failure_fails_the_run_without_reopening_attempts(self):
+        path = create(self.root, self.identity, ["f1", "f2"])
+        authorize(path, self.event("call-1", "f1"))
+        checkpoint = record_outcome(path, "call-1", False, "provider rejected the comment")
+        self.assertEqual(checkpoint["status"], "failed")
+        self.assertEqual(checkpoint["attempted_finding_ids"], ["f1"])
+
+    def test_a_terminal_checkpoint_refuses_every_outcome(self):
+        for terminate in ("completed", "failed", "abandoned"):
+            with self.subTest(terminal=terminate):
+                temp = tempfile.TemporaryDirectory()
+                self.addCleanup(temp.cleanup)
+                root = Path(temp.name)
+                identity = dict(self.identity, workspace=str(root))
+                path = create(root, identity, ["f1"])
+                event = dict(identity, mcrt=True, role="poster", finding_ids=["f1"], tool_use_id="call-1")
+                authorize(path, event)
+                if terminate == "abandoned":
+                    abandon(path, "operator stopped the run")
+                else:
+                    record_outcome(path, "call-1", terminate == "completed")
+                with self.assertRaises(CheckpointError):
+                    record_outcome(path, "call-1", True)
+
+    def test_an_authorization_is_refused_once_the_run_is_terminal(self):
+        path = create(self.root, self.identity, ["f1", "f2"])
+        authorize(path, self.event("call-1", "f1"))
+        record_outcome(path, "call-1", False)
+        self.assertFalse(authorize(path, self.event("call-2", "f2")).allowed)
+
+
+class CheckpointLockTest(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.identity = {
+            "workspace": str(self.root), "repository": "acme/widgets",
+            "pull_request_id": "42", "binding_digest": "digest",
+        }
+        self.path = create(self.root, self.identity, ["f1"])
+        self.lock = self.path.with_suffix(self.path.suffix + ".lock")
+
+    def test_a_lock_records_its_owner(self):
+        self.assertFalse(self.lock.exists())
+        authorize(self.path, dict(self.identity, mcrt=True, role="poster", finding_ids=["f1"], tool_use_id="call-1"))
+        self.assertFalse(self.lock.exists(), "the lock must be released")
+
+    def test_a_malformed_lock_does_not_wedge_the_run(self):
+        self.lock.write_text("", encoding="utf-8")
+        abandon(self.path, "operator recovery after a killed hook")
+        self.assertEqual(inspect(self.path)["status"], "abandoned")
+
+    def test_a_lock_owned_by_a_dead_process_is_recovered(self):
+        dead = 4194303  # above the default pid_max, so it cannot be running
+        self.lock.write_text(json.dumps({"pid": dead, "host": os.uname().nodename, "created_at": "2026-01-01T00:00:00+00:00"}), encoding="utf-8")
+        abandon(self.path, "operator recovery after a killed hook")
+        self.assertEqual(inspect(self.path)["status"], "abandoned")
+
+    def test_a_live_lock_is_preserved(self):
+        self.lock.write_text(json.dumps({"pid": os.getpid(), "host": os.uname().nodename, "created_at": "2999-01-01T00:00:00+00:00"}), encoding="utf-8")
+        with self.assertRaises(CheckpointError):
+            abandon(self.path, "should not steal a live lock")
+
+
+class GateStatusTest(unittest.TestCase):
+    def checkpoint(self, status: str) -> dict:
+        return {
+            "status": status,
+            "identity": {"workspace": "/w", "repository": "a/b", "pull_request_id": "1", "binding_digest": "d"},
+            "approved_finding_ids": ["f1"],
+            "attempted_finding_ids": [],
+        }
+
+    def event(self) -> dict:
+        return {
+            "mcrt": True, "finding_ids": ["f1"], "workspace": "/w", "repository": "a/b",
+            "pull_request_id": "1", "binding_digest": "d", "role": "poster", "tool_use_id": "call-1",
+        }
+
+    def test_only_an_approved_checkpoint_authorizes_a_post(self):
+        self.assertTrue(evaluate_action(self.checkpoint("approved"), self.event()).allowed)
+        for status in ("completed", "failed", "abandoned", "attempting", "running", "pending_approval"):
+            with self.subTest(status=status):
+                self.assertFalse(evaluate_action(self.checkpoint(status), self.event()).allowed)
