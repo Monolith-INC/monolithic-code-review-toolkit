@@ -89,18 +89,36 @@ Each host gets its own compiled payload. Download the archive for your host from
 
 ### Claude Code
 
-Extract the payload into a skills directory. Claude Code discovers any folder there containing
-`.claude-plugin/plugin.json` as a plugin — no marketplace, no install step.
+One command installs the **latest release** payload into Claude Code's skills directory, and stages
+the companion adapters beside it:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Monolith-INC/monolithic-code-review-toolkit/main/scripts/install-claude.sh | bash
+```
+
+Restart Claude Code, or run `/reload-plugins`. The plugin loads as
+`monolithic-code-review-toolkit@skills-dir`.
+
+Staging is not wiring. The installer downloads the adapters and records a manifest at
+`~/.claude/mcrt/install.json`; it touches no repository and installs no Python dependencies. The
+per-repository half happens in `review-setup`, which is where the adapters' arguments actually come
+from — see [First run](#first-run).
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `MCRT_VERSION` | latest release | Pin a release |
+| `MCRT_CLAUDE_SKILLS_DIR` | `~/.claude/skills/monolithic-code-review-toolkit` | Plugin location. Point it at `<repo>/.claude/skills/…` to share the plugin with collaborators through version control |
+| `MCRT_CLAUDE_ADAPTER_DIR` | `~/.claude/mcrt` | Adapter staging root |
+| `MCRT_ADAPTERS` | `orchestrator,knowledge` | Which adapters to stage, or `none` |
+
+To install the payload by hand instead, extract it yourself — Claude Code discovers any folder in a
+skills directory containing `.claude-plugin/plugin.json`, with no marketplace and no install step:
 
 ```bash
 mkdir -p ~/.claude/skills/monolithic-code-review-toolkit
 tar -xzf monolithic-code-review-toolkit-0.5.0-claude.tar.gz \
   --strip-components=1 -C ~/.claude/skills/monolithic-code-review-toolkit payload
 ```
-
-Restart Claude Code, or run `/reload-plugins`. The plugin loads as
-`monolithic-code-review-toolkit@skills-dir`. Use `~/.claude/skills/` for personal scope, or
-`<repo>/.claude/skills/` to share it with collaborators through version control.
 
 ### Cursor
 
@@ -183,6 +201,11 @@ GitHub through `gh` need no flag. See
 [the adapter guide](adapters/claude/README.md) for the input contract, the
 user-input round trip, the poster guard, and uninstall.
 
+**You do not have to derive those flags yourself.** If the curl installer staged
+this adapter, `review-setup` offers to run it for the repository you are in, and
+derives `--scm-tool` and `--scm-read-tool` from the SCM capability mapping it
+just recorded — which is where the flags come from in the first place.
+
 Tagged releases also ship `monolithic-code-review-toolkit-<version>-claude-review-orchestrator.tar.gz`.
 Extract it beside a trusted checkout and run the same installer from the
 extracted `adapters/claude/` directory.
@@ -200,7 +223,10 @@ python3.12 adapters/knowledge/install_knowledge_adapter.py --project /path/to/re
 The store works without it. Its layout is deterministic, so `catalog.tsv` plus `grep` reaches the
 same facts on any host — lexical addressing first is the design, not a fallback. This adapter is the
 only component with third-party Python dependencies; everything else runs from a checkout with
-nothing installed. See [the adapter guide](adapters/knowledge/README.md).
+nothing installed. That is why the curl installer stages it but never installs its dependencies:
+`review-setup` asks before running `pip`, because the environment it lands in is your choice.
+Tagged releases ship `monolithic-code-review-toolkit-<version>-knowledge-adapter.tar.gz`. See
+[the adapter guide](adapters/knowledge/README.md).
 
 ### First run
 
@@ -209,6 +235,12 @@ detects your pull-request host, asks where project knowledge should be stored, a
 `.monolithic-code-review/sources.json`. It then runs `discover-project-knowledge`, which derives
 your repository's structure, mechanics and history signals from the tree and **asks** about the
 things only you know — what the project is for, who owns it, and which rules a change must respect.
+
+Finally it offers to wire any adapter a host installer staged, one at a time and only on an explicit
+confirmation for each. This is the natural place for it: the review orchestrator needs the provider
+tools just detected, and the knowledge MCP server needs the store root just chosen. Nothing is
+downloaded here — only installers already on disk are run, and the result is recorded under
+`adapters` in `sources.json`.
 
 If a repository already has `sources.json` from an older setup run, rerun `review-setup` after
 upgrading so `quality_lenses` reflects the current TypeScript detection rules and the new

@@ -1,6 +1,6 @@
 ---
 name: review-setup
-description: Use once per repository, before any other review skill, to record where requirements and definitions of done live and which pull-request host is in use. Run again when the tracker, remote, or vault layout changes.
+description: Use once per repository, before any other review skill, to record where requirements and definitions of done live, which pull-request host is in use, and where project knowledge is stored, then offer to wire any companion adapters the host installer staged. Run again when the tracker, remote, or vault layout changes.
 ---
 
 # Review Setup
@@ -190,6 +190,11 @@ Write `.monolithic-code-review/sources.json` in the repository root:
     "derived_from_commit": "<sha>",
     "tiers_present": [1, 2, 3, 4, 5],
     "mcp_server": "mcrt-knowledge"
+  },
+  "adapters": {
+    "manifest": "/home/<user>/.claude/mcrt/install.json",
+    "review_orchestrator": { "installed": false },
+    "knowledge_mcp": { "installed": false }
   }
 }
 ```
@@ -224,6 +229,11 @@ Field notes:
   is added to `.gitignore` and whether a refresh produces reviewable diffs.
 - `knowledge.derived_from_commit` — the commit the store was last derived from. Discovery uses it to
   refresh only the units whose inputs actually moved.
+- `adapters` — what step 5 wired into this repository, written after that step runs. `installed:
+  false` means offered and declined, or unavailable; the key being absent means the question was
+  never reached. `review_orchestrator.scm_tools` and `scm_read_tools` record the provider flags the
+  orchestrator was installed with, so a later run can tell whether a changed SCM mapping has left
+  them stale.
 - `knowledge.mcp_server` — the configured knowledge MCP server name when its adapter is installed.
   Omit it when there is none; the store's layout is deterministic, so skills fall back to reading
   `catalog.tsv` and grepping the tree.
@@ -233,7 +243,90 @@ configuration shared with the team. Ask. When `knowledge.committed` is true and 
 under `.monolithic-code-review/`, negate the store path so the configuration stays private while
 the knowledge stays shared.
 
-### 5. Verify before declaring success
+### 5. Wire the companion adapters
+
+Optional adapters extend the toolkit beyond the portable skills: a **review orchestrator** that runs
+the lifecycle review across isolated workers, and a **knowledge MCP server** that serves the store
+through a bounded tool surface. A host installer only *stages* them — it downloads their sources and
+records a manifest. Wiring them to a repository happens here, because the arguments they need are
+exactly what the previous steps established: the orchestrator needs this repository's provider
+tools, and the knowledge server needs the store root just chosen.
+
+Read the staging manifest. It is JSON with a `python` interpreter, and an `adapters` map whose
+entries carry `root`, `installer`, `scope`, and `requires_pip`:
+
+| Host | Manifest |
+| --- | --- |
+| Claude Code | `$MCRT_CLAUDE_ADAPTER_DIR/install.json`, else `~/.claude/mcrt/install.json` |
+| Any host, from a checkout | no manifest — use `adapters/<name>/install_*.py` in the checkout, with `python3.12` |
+
+If there is no manifest and no checkout, say once that no adapters are available and skip to step 6.
+Never download an adapter here; a skill that fetches and runs code mid-setup is a different and much
+larger trust decision than one that runs an installer the user already put on disk.
+
+Offer each available adapter separately, and install nothing without a specific confirmation for
+that adapter. Run the installer with `--dry-run` first and show the user the planned change — both
+installers edit host configuration files (`settings.json`, `.mcp.json`) that hold unrelated entries.
+
+**Review orchestrator.** Derive the provider flags from the SCM mapping recorded in step 4. Every
+capability whose value is an MCP tool name contributes a flag, and which flag depends on whether the
+capability writes:
+
+| Capabilities | Flag | Why separate |
+| --- | --- | --- |
+| `post_inline_comment`, `post_summary_comment`, `reply_to_review_thread` | `--scm-tool` | Only the posting worker may write |
+| `get_pull_request`, `get_pull_request_diff`, `list_review_threads`, `list_conversation_comments` | `--scm-read-tool` | Read-only workers must never hold a write tool |
+
+Capabilities implemented as shell commands contribute no flag — the workers already have a shell.
+A provider mapped entirely to a CLI therefore needs neither flag, and that is correct, not a gap.
+
+```bash
+<python> <orchestrator installer> --scope project --project <repository root> \
+  --scm-read-tool <read tool> --scm-tool <write tool>
+```
+
+Passing no flags when the mapping *is* MCP-based is the failure this step exists to prevent: the
+read-only workers then report every MCP capability as unverified, and the report silently loses the
+checks the user thinks it ran. State which flags you derived and let the user correct them.
+
+**Knowledge MCP server.** Offer it only when `knowledge.root` is not null. It is the one component
+with third-party Python dependencies, so its dependency install is a **separate** question — it
+writes into whichever Python environment is active, and choosing an environment is the user's call:
+
+```bash
+<python> -m pip install -e <knowledge adapter root>
+<python> <knowledge installer> --project <repository root>
+```
+
+The installer reads `knowledge.root` from the `sources.json` just written, so it needs no root
+argument. If the user declines the dependencies, do not register the server: an entry pointing at a
+server that cannot start is worse than no entry, and reviews already read the store lexically
+through `catalog.tsv` without it.
+
+Both installers refuse rather than clobber — an unmanaged agent, skill, hook, or server entry
+produces a `Blocked:` message. Report that message as-is and stop offering that adapter. Do not
+remove the conflicting entry, and do not retry with a different scope to get around it.
+
+Then amend `sources.json` with what was actually wired:
+
+```json
+"adapters": {
+  "manifest": "/home/<user>/.claude/mcrt/install.json",
+  "review_orchestrator": {
+    "installed": true,
+    "scope": "project",
+    "scm_tools": ["mcp__azure-devops__repo_pull_request_thread_write"],
+    "scm_read_tools": ["mcp__azure-devops__repo_pull_request"]
+  },
+  "knowledge_mcp": { "installed": true, "server": "mcrt-knowledge" }
+}
+```
+
+Record a declined or unavailable adapter as `"installed": false` rather than omitting it, so a later
+run can tell "asked and declined" from "never offered". When the knowledge server was registered,
+also set `knowledge.mcp_server` to its server name; leave that key absent otherwise.
+
+### 6. Verify before declaring success
 
 Resolve one real work item end to end through the recorded mapping and show the user the title and
 acceptance criteria you got back. A configuration that has never successfully fetched anything is not
@@ -281,3 +374,7 @@ For file-backed sources, requirements and DoD are conventionally the `## Require
 - `knowledge.root` is either a store the user chose or an explicit `null`.
 - When a store was built: `catalog.tsv` parses, and one routing-table lookup followed by one unit
   read returned a real unit. A store that has never been read back is not a working store.
+- Every adapter found in the staging manifest was either installed on an explicit confirmation or
+  recorded as `installed: false`. No adapter was installed without one.
+- When the review orchestrator was installed against an MCP-based provider, its recorded
+  `scm_tools` and `scm_read_tools` are non-empty and name tools that appear in `scm.capabilities`.

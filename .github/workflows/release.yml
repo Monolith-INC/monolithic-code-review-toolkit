@@ -63,6 +63,13 @@ jobs:
             -czf "dist/monolithic-code-review-toolkit-${VERSION}-claude-review-orchestrator.tar.gz" \
             adapters/claude \
             core
+          # The knowledge adapter carries no core/: it is the one adapter that
+          # does not import the review harness. --exclude egg-info because the
+          # editable install CI performs leaves build metadata pointing at the
+          # runner's paths, which is meaningless to anyone extracting this.
+          tar --exclude='__pycache__' --exclude='*.egg-info' \
+            -czf "dist/monolithic-code-review-toolkit-${VERSION}-knowledge-adapter.tar.gz" \
+            adapters/knowledge
           ls -la dist
 
       # Release notes are this version's changelog section only — passing the

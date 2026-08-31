@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **One-command Claude Code install.** `scripts/install-claude.sh` installs the
+  latest release payload the way `install-cursor.sh` does, replacing a hand-run
+  `mkdir` and `tar` that pinned a version in the README and went stale with every
+  release. It also stages the review-orchestrator and knowledge adapters and
+  records a manifest at `~/.claude/mcrt/install.json`. Pin with `MCRT_VERSION`,
+  relocate with `MCRT_CLAUDE_SKILLS_DIR` or `MCRT_CLAUDE_ADAPTER_DIR`, and select
+  adapters with `MCRT_ADAPTERS`.
+- Adapter archives are staged whole, and an adapter that imports `core` will not
+  install without it. The orchestrator archive carries `adapters/claude/` and
+  `core/` together and resolves the runtime as `parents[2]/core`, so extracting
+  only the adapter directory would leave a poster guard that raises at import —
+  and since a non-zero `PreToolUse` hook is a non-blocking error, the approval
+  gate would then permit every guarded write. The installer fails loudly instead.
+- Adapter wiring moved into `review-setup` (new step 5). Staging an adapter and
+  wiring it to a repository are different acts with different inputs: the
+  orchestrator's `--scm-tool` and `--scm-read-tool` flags are derivable only from
+  the SCM capability mapping `review-setup` has just recorded, and getting them
+  wrong is silent — the read-only workers report every MCP capability as
+  unverified and the report loses checks the user believes it ran. The skill now
+  offers each staged adapter separately, derives those flags, dry-runs first, and
+  records the outcome under a new `adapters` key in `sources.json`.
+- Tagged releases now ship `monolithic-code-review-toolkit-<version>-knowledge-adapter.tar.gz`.
+  The knowledge adapter previously reached users only through a checkout, so no
+  release-based install could offer it.
+
 ## [0.5.0] - 2026-08-31
 
 ### Added
