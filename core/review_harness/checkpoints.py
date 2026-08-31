@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import json
 import os
+import platform
 from contextlib import contextmanager
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, Iterator
 from uuid import uuid4
@@ -41,15 +42,71 @@ def _write(path: Path, value: dict[str, Any]) -> None:
     os.replace(temporary, path)
 
 
+# A hook runs under a host timeout, so it can be killed between taking the lock
+# and releasing it.  Locks therefore carry their owner and are recoverable when
+# that owner is provably gone, while a live owner is always respected.
+LOCK_MAX_AGE = timedelta(minutes=15)
+
+
+def _lock_owner(lock: Path) -> dict[str, Any] | None:
+    try:
+        value = json.loads(lock.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return value if isinstance(value, dict) else None
+
+
+def _lock_is_held(owner: dict[str, Any] | None) -> bool:
+    """Is the recorded owner still able to be holding this lock?
+
+    An unreadable or ownerless lock is recoverable.  A lock owned by a process
+    on this machine is respected while that process exists.  A lock from another
+    machine cannot be probed, so it is respected until it ages out.
+    """
+    if owner is None:
+        return False
+    pid = owner.get("pid")
+    if not isinstance(pid, int) or isinstance(pid, bool) or pid <= 0:
+        return False
+    if owner.get("host") != platform.node():
+        created = owner.get("created_at")
+        try:
+            age = datetime.now(UTC) - datetime.fromisoformat(str(created))
+        except (TypeError, ValueError):
+            return False
+        return age < LOCK_MAX_AGE
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    except OSError:
+        return True
+    return True
+
+
+def _acquire(lock: Path) -> None:
+    for attempt in (1, 2):
+        try:
+            descriptor = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        except FileExistsError as error:
+            owner = _lock_owner(lock)
+            if attempt == 2 or _lock_is_held(owner):
+                raise CheckpointError(f"checkpoint is locked by {owner or 'an unknown owner'}: {lock.stem}") from error
+            lock.unlink(missing_ok=True)
+            continue
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            json.dump({"pid": os.getpid(), "host": platform.node(), "created_at": _now()}, handle)
+        return
+    raise CheckpointError(f"checkpoint could not be locked: {lock.stem}")
+
+
 @contextmanager
 def _locked(path: Path) -> Iterator[None]:
     lock = path.with_suffix(path.suffix + ".lock")
+    _acquire(lock)
     try:
-        descriptor = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
-    except FileExistsError as error:
-        raise CheckpointError(f"checkpoint is locked: {path}") from error
-    try:
-        os.close(descriptor)
         yield
     finally:
         lock.unlink(missing_ok=True)
