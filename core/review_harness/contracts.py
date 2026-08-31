@@ -19,6 +19,12 @@ CORE_CONTRACT_VERSION = 1
 SOURCES_SCHEMA_VERSION = 2
 IDENTIFIER = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]*$")
 PLACEHOLDER = re.compile(r"^\{(workspace|work_item_id|pull_request_id|owner|repo|body_file|body|path|line)\}$")
+# Shell syntax that changes what a command line means: statement separators,
+# pipes, redirection, background, command substitution, parameter expansion,
+# grouping, and embedded line breaks.  A v1 mapping containing any of these is
+# ambiguous, so migration must refuse it rather than reinterpret the operators
+# as ordinary arguments.
+SHELL_SYNTAX = re.compile(r"[;&|<>`$()\r\n]")
 
 REVIEW_SKILLS = {
     "task": "review-task",
@@ -176,13 +182,13 @@ def migrate_sources_v1(value: Any) -> tuple[dict[str, Any] | None, list[str]]:
                 if len(parts) == 3 and all(IDENTIFIER.fullmatch(part) for part in parts[1:]):
                     capabilities[capability] = {"kind": "mcp_tool", "server": parts[1], "tool": parts[2], "access": access, "effect": effect}
                     continue
-            try:
-                words = shlex.split(raw)
-            except ValueError:
-                words = []
-            if words and all(";" not in word and "|" not in word and "$(`" not in word for word in words):
-                program, args = words[0], words[1:]
-                if IDENTIFIER.fullmatch(program):
+            if not SHELL_SYNTAX.search(raw):
+                try:
+                    words = shlex.split(raw)
+                except ValueError:
+                    words = []
+                if words and IDENTIFIER.fullmatch(words[0]):
+                    program, args = words[0], words[1:]
                     capabilities[capability] = {"kind": "command", "program": program, "args": args or ["--help"], "access": access, "effect": effect}
                     continue
             diagnostics.append(f"{area}.{capability}: ambiguous command mapping; rerun review-setup")
