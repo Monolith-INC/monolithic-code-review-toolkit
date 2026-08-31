@@ -17,6 +17,13 @@ from core.review_harness.contracts import (
     validate_sources,
 )
 from core.review_harness.gate import evaluate_action
+from core.review_harness.contracts import (
+    READ_CAPABILITIES,
+    SCM_CAPABILITIES,
+    TRACKER_CAPABILITIES,
+    WRITE_CAPABILITIES,
+    EFFECTS,
+)
 from core.review_harness.schemas import sources_schema
 
 
@@ -255,6 +262,55 @@ class CommandBindingMatchTest(unittest.TestCase):
         self.assertIsNone(match_command_binding(mcp, ["gh", "pr", "comment", "42"]))
         self.assertIsNone(match_command_binding(None, ["gh"]))
         self.assertIsNone(match_command_binding(self.binding(["pr"]), []))
+
+
+class SchemaEvidenceTest(unittest.TestCase):
+    def capability_branches(self, capability: str) -> list[dict]:
+        definition = sources_schema()["$defs"]["source"]["properties"]["capabilities"]["properties"][capability]
+        return definition["oneOf"]
+
+    def area_enum(self, area: str) -> list[str]:
+        wrapper = sources_schema()["$defs"][area]
+        for member in wrapper["allOf"]:
+            names = member.get("properties", {}).get("capabilities", {}).get("propertyNames")
+            if names:
+                return names["enum"]
+        self.fail(f"{area} does not restrict which capabilities it owns")
+
+    def test_every_capability_has_its_own_branch(self):
+        properties = sources_schema()["$defs"]["source"]["properties"]["capabilities"]
+        self.assertEqual(sorted(properties["properties"]), sorted(WRITE_CAPABILITIES | READ_CAPABILITIES))
+        self.assertFalse(properties["additionalProperties"])
+
+    def test_a_capability_fixes_its_access_and_effect(self):
+        for capability in sorted(WRITE_CAPABILITIES | READ_CAPABILITIES):
+            expected_access = "write" if capability in WRITE_CAPABILITIES else "read"
+            with self.subTest(capability=capability):
+                for branch in self.capability_branches(capability):
+                    self.assertEqual(branch["properties"]["access"], {"const": expected_access})
+                    self.assertEqual(branch["properties"]["effect"], {"const": EFFECTS[capability]})
+
+    def test_a_write_capability_has_no_path_alternative(self):
+        for capability in sorted(WRITE_CAPABILITIES):
+            with self.subTest(capability=capability):
+                kinds = {branch["properties"]["kind"]["const"] for branch in self.capability_branches(capability)}
+                self.assertEqual(kinds, {"mcp_tool", "command"})
+
+    def test_a_read_capability_keeps_the_path_alternative(self):
+        kinds = {branch["properties"]["kind"]["const"] for branch in self.capability_branches("get_pull_request")}
+        self.assertEqual(kinds, {"mcp_tool", "command", "path"})
+
+    def test_each_area_declares_only_the_capabilities_it_owns(self):
+        self.assertEqual(self.area_enum("scm"), sorted(SCM_CAPABILITIES))
+        self.assertEqual(self.area_enum("tracker"), sorted(TRACKER_CAPABILITIES))
+
+    def test_the_scm_section_still_describes_its_repository_identity(self):
+        wrapper = sources_schema()["$defs"]["scm"]
+        declared = {}
+        for member in wrapper["allOf"]:
+            declared.update(member.get("properties", {}))
+        self.assertIn("owner", declared)
+        self.assertIn("repo", declared)
 
 
 class GateTest(unittest.TestCase):
