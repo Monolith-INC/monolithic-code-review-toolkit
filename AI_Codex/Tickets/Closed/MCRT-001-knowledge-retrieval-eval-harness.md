@@ -3,8 +3,9 @@ title: Knowledge retrieval eval harness
 ticket: MCRT-001
 type: ticket
 area: knowledge
-status: active
+status: closed
 created: 2026-08-30
+closed: 2026-08-30
 feature: project-knowledge
 tags:
   - knowledge
@@ -112,3 +113,36 @@ Tier 1 delivered and Tier 2 specified. Two results worth carrying forward:
 The aggregate metrics alone proved too coarse: two of the three caught regressions left rank@1,
 rank@3 and MRR untouched and were caught only by the per-question rank comparison and the distractor
 margin. Both of those checks were added because the sensitivity sweep showed they were needed.
+
+## Review round
+
+Review found two defects in the harness, and both were of the harness's own kind — failures to
+notice. Each was reproduced before being fixed, in `b2f004b`.
+
+1. **A deleted question removed coverage silently.** `compare()` exempted links-only questions from
+   the per-question rank check because their rank is legitimately `null`, and the exemption also
+   swallowed the case where the question was *gone*. Deleting `q08` left rank@1 at 0.8182 and MRR at
+   0.9091, dropped the only link-traversal assertion, and *lowered* the ladder cost from 20764 to
+   18361 — so losing coverage read as an improvement, and the run exited 0. Presence is now checked
+   before any exemption applies.
+2. **`--update-baseline` would record a broken invariant.** With the links-only edge severed it
+   printed `FAIL q08:links-only` and wrote the baseline anyway, contradicting its own documented
+   behaviour. The flag exists to accept *metric* movement; an assertion is an invariant, and
+   recording a broken one makes the breakage the new normal and retires the check that caught it. It
+   now refuses, exits 1, and leaves the file byte-identical.
+
+Both fixes changed no measurement — `baseline.json` came out byte-identical, which is what proves the
+fix altered only the comparison and not the store.
+
+A third defect surfaced the next day, from the harness simply being run again: the store's recency
+bonus reads the wall clock, so a frozen fixture scored differently once the date rolled over and the
+ladder cost moved 20764 → 20766 on an untouched tree. A baseline that decays on its own is not a
+baseline; left alone it would have drifted until a flipped rank reported a regression nobody caused.
+The store now takes one injectable clock and the eval pins it to the fixture's date.
+
+The generalisable lesson is the one the sensitivity sweep had already started: this harness's blind
+spots are all shaped like *silence*. Every defect found in it so far — the null-rank false positive,
+the deleted question, the recorded invariant, the drifting clock — was a case of the runner reporting
+success while measuring less than it claimed, or measuring something other than what it named.
+Future changes to it are worth reviewing against that question specifically: what would this still
+call green?

@@ -17,6 +17,10 @@ Plus four pass/fail assertions that are not scored: the links-only target is
 unreachable by search, the assumed trap is labelled uncitable, the oversized unit
 truncates with a handle that actually advances, and ordering is reproducible.
 
+The store's clock is pinned to `EVAL_TODAY`. The recency bonus is a function of a
+unit's age, so on the wall clock every number here would decay daily and the
+committed baseline would drift away from a fixture that never changed.
+
     python3.12 adapters/knowledge/eval/run_eval.py [--update-baseline] [--json]
 
 Exits non-zero when a measurement regresses against `baseline.json`, when a
@@ -35,6 +39,7 @@ import importlib.util
 import json
 import sys
 from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -42,6 +47,13 @@ EVAL_DIR = Path(__file__).resolve().parent
 ADAPTER_DIR = EVAL_DIR.parent
 FIXTURE = EVAL_DIR / "fixture"
 QUESTIONS = EVAL_DIR / "questions.tsv"
+
+# The fixture is frozen; the calendar is not. The store's recency bonus is a
+# function of how old a unit is *today*, so an unpinned clock makes every number
+# here decay a little each day — the baseline drifts on its own, and a rank that
+# eventually flips reads as a regression nobody caused. Pinning the clock to the
+# date the fixture units carry is what makes the measurements reproducible.
+EVAL_TODAY = date(2026, 8, 30)
 BASELINE = EVAL_DIR / "baseline.json"
 
 #: The budget the scripted policy fetches under. Matches the server's own default
@@ -225,7 +237,7 @@ def check_determinism(store, questions: list[Question], result: Result) -> None:
 
 
 def evaluate(fixture: Path = FIXTURE, questions_path: Path = QUESTIONS) -> Result:
-    store = STORE.KnowledgeStore(fixture)
+    store = STORE.KnowledgeStore(fixture, today=EVAL_TODAY)
     questions = load_questions(questions_path)
     result = Result()
 

@@ -26,6 +26,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   what it is for, but refuses to write while an assertion fails: an invariant is not a measurement,
   and recording a broken one would retire the check that caught it.
 
+### Fixed
+
+- **The eval's numbers no longer decay with the calendar.** `KnowledgeStore` read the wall clock
+  inside its recency bonus, so a frozen fixture scored slightly differently each day and the
+  committed baseline drifted away from it — the day after the harness merged, the ladder cost moved
+  20764 → 20766 on an untouched tree, and left alone it would have drifted until a flipped rank
+  reported a regression nobody caused. The store now takes one injectable clock, used by both the
+  recency bonus and the `updated` stamp; unpinned it still reads the wall clock per call, so a
+  long-running server sees the date roll over as before. The eval pins it to the fixture's date.
+
 ### Changed
 
 - The eval reports two real retrieval weaknesses rather than tuning them away. "Which layer owns
