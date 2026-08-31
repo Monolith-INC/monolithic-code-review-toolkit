@@ -1,11 +1,18 @@
 # Monolithic Code Review Toolkit — Product Requirements
 
-**Status:** accepted baseline; current release: 0.5.0
-**Version:** 0.5.0
+**Status:** accepted baseline; current release: 0.6.0
+**Version:** 0.6.0
 **Date:** 2026-08-12
 **Source brief:** `instructions.md`
 
 ## Version history
+
+- **0.6.0** — Add a one-command Claude Code installer that also stages the companion adapters and
+  records a staging manifest, and move per-repository adapter wiring into `review-setup`, which is
+  the only step that holds the inputs those installers need — the SCM capability mapping and the
+  knowledge store root. Adapter archives stage whole, and an adapter that imports the shared `core`
+  runtime refuses to install without it rather than leaving an approval gate that fails open.
+  Releases also ship the knowledge adapter, which previously reached users only through a checkout.
 
 - **0.5.0** — Add project knowledge: a five-tier, file-shaped store written by
   `discover-project-knowledge`, located and recorded by `review-setup`, consulted by every other
