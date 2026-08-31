@@ -182,6 +182,14 @@ class CodexProvenanceTest(unittest.TestCase):
         payload.pop("tool_use_id")
         self.assertIsNotNone(HOOK.evaluate(payload))
 
+    def test_repointing_a_capability_after_approval_invalidates_it(self):
+        root = self.workspace(sources(), ["finding-1"])
+        moved = sources(post_inline_comment=dict(MCP_WRITE, tool="post_review_comment"))
+        (root / ".monolithic-code-review" / "sources.json").write_text(json.dumps(moved), encoding="utf-8")
+        payload = self.payload(root, tool_name="mcp__github__post_review_comment")
+        reason = HOOK.evaluate(payload)
+        self.assertIsNotNone(reason, "a re-pointed capability reused the old approval")
+
     # --- correlation ---
 
     def run_main(self, payload: dict) -> int:

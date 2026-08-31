@@ -494,6 +494,15 @@ class CheckpointLifecycleTest(unittest.TestCase):
                 with self.assertRaises(CheckpointError):
                     record_outcome(path, "call-1", True)
 
+    def test_a_stale_binding_digest_cannot_consume_an_approval(self):
+        """Re-pointing a capability after approval must invalidate it."""
+        path = create(self.root, self.identity, ["f1"])
+        stale = dict(self.event("call-1", "f1"), binding_digest="a-different-digest")
+        decision = authorize(path, stale)
+        self.assertFalse(decision.allowed)
+        self.assertIn("binding_digest", decision.reason)
+        self.assertEqual(inspect(path)["attempted_finding_ids"], [])
+
     def test_an_authorization_is_refused_once_the_run_is_terminal(self):
         path = create(self.root, self.identity, ["f1", "f2"])
         authorize(path, self.event("call-1", "f1"))
