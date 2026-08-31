@@ -426,17 +426,41 @@ and `corepack pnpm --version` resolves it. Sections 8 and 10 gates must be invok
   release-preparation tasks remaining. `AUD-04` (no external decision), `AUD-09` (host smoke), and the
   documented contract/timeline qualifications remain in force.
 
+### Checkpoint 23 — merged PR #4 and v0.5.0 release preparation — 2026-08-31T05:50:50-03:00
+
+> [!warning] Release preparation is authorized; publication is not
+> The user authorized PR #4's merge. GitHub merged it into `main` at `0eb44ca634d452e1b3e33481640d354ef9dfc207`,
+> and post-merge CI run `33374219524` succeeded. A release branch may be prepared and reviewed, but do
+> **not** merge it, create/push `v0.5.0`, or publish a GitHub release without the final explicit approval.
+
+- Created isolated `release/0.5.0` from merged `main`; the baseline full suite passed: 74 root, 53
+  Codex, 87 Claude, and 111 knowledge tests (16 intentional skips).
+- Ported only the two generated-agent ignore rules from the dirty checkout and verified the tracked
+  `.agents/plugins/marketplace.json` remains unignored. The user-owned `.mcp.json` newline-only change
+  is excluded.
+- Reconciled the stale Cursor marketplace version (`0.2.3` → `0.5.0`) and requirements header
+  (`0.1.0` baseline → `0.5.0`); existing `VERSION`, `package.json`, plugin manifest, and README pins
+  already declared `0.5.0`. Moved completed 0.5.0 notes from `Unreleased` and dated the section
+  `2026-08-31`. No `v0.5.0` tag or GitHub release exists.
+- Release gates passed: validate, inspect (11 skills; zero diagnostics), payload build/verify, lint,
+  findings (20/20), knowledge evaluation, full suite (325 tests; 16 intentional skips), archive tests,
+  and `git diff --check`. Structured release-diff review found no blocker. Node `20.20.2` emits the
+  repository's declared `>=22` engine warning while all commands exit successfully.
+- The live disposable-PR host smoke remains outstanding because no disposable consumer host/provider
+  is configured here. Archive extraction/import smoke is completed, but must not be represented as
+  live-host validation.
+- Committed release preparation as `0112694` and opened
+  [PR #6](https://github.com/Monolith-INC/monolithic-code-review-toolkit/pull/6) (`release/0.5.0` →
+  `main`). The PR has the `ai-generated` label, five-archive inventory, changelog-derived notes, and
+  complete gate evidence. Only the final merge/tag/publication approval remains.
+
 ## Pending tasks
 
-- Sections 1–9 are complete: the 29 replies, thread resolutions, PR-body correction, fresh review,
-  C22 remediation, and final-push feedback scan are all recorded above.
-- **Merge remains unauthorized:** PR #4 is mechanically mergeable, CI-green, thread-clean, and
-  review-gated, but GitHub still has no external review decision and explicit merge authorization has
-  not been granted.
+- PR #4 is merged and post-merge CI-green. Sections 1–9 are complete; section 10 preparation is in
+  progress on `release/0.5.0`.
 - **Live host smoke remains open:** neither adapter has completed the disposable-PR host smoke. Do not
   represent the harness as production-validated while that integration evidence is absent.
-- **Section 10 is entirely pending:** after an authorized merge, prepare `v0.5.0` in an isolated
-  worktree; do not tag or publish without the section-10 approval gate.
+- **Section 10 approval boundary remains:** PR #6 is prepared; obtain explicit approval before merging
+  release preparation, creating/pushing `v0.5.0`, or publishing.
 - Invoke section 8/10 gates through `corepack pnpm`, since bare `pnpm` is absent.
-- Do not repeat the completed replies, resolutions, review, remediation, or feedback scan. Do not merge
-  PR #4, tag `v0.5.0`, publish a release, or begin section 10 without explicit authorization.
+- Do not merge the release branch, tag `v0.5.0`, or publish a release without explicit authorization.

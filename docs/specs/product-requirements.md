@@ -1,7 +1,7 @@
 # Monolithic Code Review Toolkit — Product Requirements
 
 **Status:** accepted baseline; current release: 0.5.0
-**Version:** 0.1.0 (baseline)
+**Version:** 0.5.0
 **Date:** 2026-08-12
 **Source brief:** `instructions.md`
 
