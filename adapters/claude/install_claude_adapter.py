@@ -19,7 +19,11 @@ AGENT_FILENAMES = (
 )
 SKILL_NAME = "mcrt-review"
 RECORD_NAME = "mcrt-claude-review-adapter-install.json"
-DEFAULT_HOOK_MATCHER = "Bash|.*pull_request.*|.*pr_comment.*|.*issue_comment.*"
+# The guarded surface is data-driven from sources.json, so this only has to be
+# wide enough to reach the hook: it filters exactly, against the registered write
+# bindings. It must route every comment/thread write tool name a binding can name,
+# including mcp__<server>__post_comment.
+DEFAULT_HOOK_MATCHER = "Bash|.*comment.*|.*pull_request.*|.*review_thread.*|.*thread_write.*"
 ADAPTER_ROOT_PLACEHOLDER = "__MCRT_ADAPTER_ROOT__"
 SCM_TOOLS_PLACEHOLDER = "__MCRT_SCM_TOOLS__"
 SCM_READ_TOOLS_PLACEHOLDER = "__MCRT_SCM_READ_TOOLS__"

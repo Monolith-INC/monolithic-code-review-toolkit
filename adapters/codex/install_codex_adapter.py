@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 import re
+import shlex
 import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -22,6 +23,10 @@ AGENT_FILENAMES = (
 SKILL_NAME = "mcrt-review"
 REQUIRED_DEPTH = 2
 RECORD_NAME = "mcrt-codex-review-adapter-install.json"
+# The hook is only interested in shell commands and comment/thread writes. A ".*"
+# matcher would spawn an interpreter that imports the core package and revalidates
+# the binding document on every Read, Edit and Grep — twice per tool call.
+HOOK_MATCHER = r"^Bash$|.*comment.*|.*pull_request.*|.*review_thread.*"
 MANUAL_SNIPPET = "[agents]\nmax_depth = 2\n# MCRT hook entries are added by the installer"
 
 
@@ -63,8 +68,15 @@ def _section_bounds(lines: list[str], section: str) -> tuple[int, int] | None:
     return start, len(lines)
 
 
+def _toml_string(value: str) -> str:
+    """Encode a TOML basic string; a path may contain quotes or backslashes."""
+    escaped = value.replace("\\", "\\\\").replace('"', '\\"')
+    return f'"{escaped}"'
+
+
 def hook_command(adapter_root: Path) -> str:
-    return f"python3.12 {adapter_root / 'mcrt_review_hook.py'}"
+    """The command as a shell would see it, so an awkward path stays one argument."""
+    return f"python3.12 {shlex.quote(str(adapter_root / 'mcrt_review_hook.py'))}"
 
 
 def plan_config_edit(contents: str, adapter_root: Path | None = None) -> ConfigEdit:
@@ -99,14 +111,15 @@ def plan_config_edit(contents: str, adapter_root: Path | None = None) -> ConfigE
                 lines[index] = f"{match.group(1)}{REQUIRED_DEPTH}{match.group(3)}"
                 after = "".join(lines)
                 action = "replace"
-    command = hook_command(adapter_root or _adapter_root())
+    command = _toml_string(hook_command(adapter_root or _adapter_root()))
+    matcher = _toml_string(HOOK_MATCHER)
     if command not in after:
         separator = "" if not after or after.endswith("\n\n") else ("\n" if after.endswith("\n") else "\n\n")
         after += (
-            f'{separator}[[hooks.PreToolUse]]\nmatcher = ".*"\n\n'
-            f'[[hooks.PreToolUse.hooks]]\ntype = "command"\ncommand = "{command}"\ntimeout = 5\n\n'
-            f'[[hooks.PostToolUse]]\nmatcher = ".*"\n\n'
-            f'[[hooks.PostToolUse.hooks]]\ntype = "command"\ncommand = "{command}"\ntimeout = 5\n'
+            f'{separator}[[hooks.PreToolUse]]\nmatcher = {matcher}\n\n'
+            f'[[hooks.PreToolUse.hooks]]\ntype = "command"\ncommand = {command}\ntimeout = 5\n\n'
+            f'[[hooks.PostToolUse]]\nmatcher = {matcher}\n\n'
+            f'[[hooks.PostToolUse.hooks]]\ntype = "command"\ncommand = {command}\ntimeout = 5\n'
         )
         action = "append" if action == "none" else action
     return ConfigEdit(action, contents, after)
@@ -134,14 +147,34 @@ def _preflight(base: Path, config_path: Path, record_path: Path, sources: dict[s
     expected_agent_hashes = {name.removeprefix("agents/"): digest for name, digest in expected_hashes.items() if name.startswith("agents/")}
     if record_path.exists():
         record = json.loads(record_path.read_text(encoding="utf-8"))
-        recorded_hashes = record.get("file_hashes", {f"agents/{name}": digest for name, digest in record.get("agent_hashes", {}).items()})
-        if recorded_hashes != expected_hashes:
-            raise ValueError(f"an incompatible managed install record already exists: {record_path}")
-        if not all((base / name).is_file() and _sha256((base / name).read_bytes()) == digest
-                   for name, digest in expected_hashes.items()):
-            raise ValueError(f"a managed adapter file changed after installation: {base}")
         before = config_path.read_text(encoding="utf-8") if config_path.exists() else ""
-        return plan_config_edit(before), record
+        recorded_hashes = record.get("file_hashes")
+        if isinstance(recorded_hashes, dict) and recorded_hashes:
+            if recorded_hashes != expected_hashes:
+                raise ValueError(f"an incompatible managed install record already exists: {record_path}")
+            managed = expected_hashes
+            upgraded = record
+        else:
+            # A previous release recorded only the agent files. Compare what that
+            # release could have installed, then upgrade the record in place.
+            legacy = record.get("agent_hashes")
+            if not isinstance(legacy, dict) or not legacy:
+                raise ValueError(f"an incompatible managed install record already exists: {record_path}")
+            managed = {f"agents/{name}": digest for name, digest in legacy.items()}
+            if managed != {name: digest for name, digest in expected_hashes.items() if name.startswith("agents/")}:
+                raise ValueError(f"an incompatible managed install record already exists: {record_path}")
+            upgraded = {
+                **record,
+                "schema_version": 1,
+                "agent_hashes": expected_agent_hashes,
+                "file_hashes": expected_hashes,
+                "config_existed": record.get("config_existed", config_path.exists()),
+                "config_edit": record.get("config_edit") or asdict(plan_config_edit(before)),
+            }
+        if not all((base / name).is_file() and _sha256((base / name).read_bytes()) == digest
+                   for name, digest in managed.items()):
+            raise ValueError(f"a managed adapter file changed after installation: {base}")
+        return plan_config_edit(before), upgraded
     for filename, data in sources.items():
         destination = base / filename
         if destination.exists() and destination.read_bytes() != data:

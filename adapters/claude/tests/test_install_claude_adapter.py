@@ -4,6 +4,7 @@ import contextlib
 import importlib.util
 import io
 import json
+import re
 import tempfile
 import sys
 import unittest
@@ -81,6 +82,14 @@ class ConfigEditTest(unittest.TestCase):
         edit = INSTALL.plan_config_edit(once, ADAPTER, "Bash|.*pr.*")
         self.assertEqual(edit.action, "replace")
         self.assertEqual(len(json.loads(edit.after)["hooks"]["PreToolUse"]), 1)
+
+    def test_the_default_matcher_routes_a_bound_mcp_write_tool(self):
+        """The guarded surface is data-driven now, so the matcher must be wide
+        enough to reach the hook, which does the exact filtering itself."""
+        matcher = INSTALL.DEFAULT_HOOK_MATCHER
+        for tool in ("Bash", "mcp__github__post_comment", "mcp__azure__pull_request_thread_write"):
+            with self.subTest(tool=tool):
+                self.assertTrue(re.search(matcher, tool), f"{matcher!r} does not route {tool}")
 
     def test_registers_the_guard_for_every_correlated_event(self):
         """An authorization must be resolved, so the post events are not optional."""
