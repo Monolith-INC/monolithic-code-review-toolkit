@@ -48,6 +48,9 @@ EFFECTS = {
     "fetch_parent": "tracker.work_item.read",
     "list_linked_artifacts": "tracker.artifact.read",
 }
+SCM_CAPABILITIES = frozenset(cap for cap, effect in EFFECTS.items() if effect.startswith("scm."))
+TRACKER_CAPABILITIES = frozenset(cap for cap, effect in EFFECTS.items() if effect.startswith("tracker."))
+AREA_CAPABILITIES = {"scm": SCM_CAPABILITIES, "tracker": TRACKER_CAPABILITIES}
 
 
 class ContractError(ValueError):
@@ -120,18 +123,15 @@ def validate_sources(value: Any) -> dict[str, Any]:
     if not isinstance(scm, dict) or not isinstance(tracker, dict):
         raise ContractError("sources.json requires scm and tracker objects")
     result = deepcopy(value)
-    for area, allowed in (("scm", CAPABILITIES & set(scm.get("capabilities", {}))), ("tracker", CAPABILITIES & set(tracker.get("capabilities", {})))):
+    for area in ("scm", "tracker"):
         section = result[area]
         capabilities = section.get("capabilities")
         unsupported = section.get("unsupported", [])
         if not isinstance(capabilities, dict) or not isinstance(unsupported, list) or not all(isinstance(x, str) for x in unsupported):
             raise ContractError(f"{area} capabilities and unsupported must be structured")
-        expected = {cap for cap in CAPABILITIES if (cap.startswith("scm") if False else True)}
         for capability, binding in list(capabilities.items()):
-            if area == "scm" and capability not in {c for c in CAPABILITIES if EFFECTS[c].startswith("scm.")}:
-                raise ContractError(f"{capability} does not belong in scm")
-            if area == "tracker" and capability not in {c for c in CAPABILITIES if EFFECTS[c].startswith("tracker.")}:
-                raise ContractError(f"{capability} does not belong in tracker")
+            if capability not in AREA_CAPABILITIES[area]:
+                raise ContractError(f"{capability} does not belong in {area}")
             capabilities[capability] = validate_binding(capability, binding)
     return result
 
