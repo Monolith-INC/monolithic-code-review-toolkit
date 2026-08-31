@@ -48,6 +48,9 @@ def evaluate_action(checkpoint: dict[str, Any] | None, event: dict[str, Any]) ->
     repeated = sorted(set(ids) & attempted)
     if repeated:
         return GateDecision(False, f"MCRT finding was already attempted: {', '.join(repeated)}")
+    # A host that cannot attribute the call sends no role at all; a host that
+    # can must name it, and the adapters send "unknown" rather than None when
+    # identity is missing, so an unattributed *adapter* call is denied here.
     if event.get("role") not in {None, "poster"}:
         return GateDecision(False, "only the MCRT poster may use an approval")
     return GateDecision(True, authorization_ids=tuple(ids))

@@ -550,6 +550,22 @@ class GateStatusTest(unittest.TestCase):
             "pull_request_id": "1", "binding_digest": "d", "role": "poster", "tool_use_id": "call-1",
         }
 
+    def test_a_named_non_poster_role_is_denied_but_an_absent_one_is_not(self):
+        """The role check lives in the adapters, not here.
+
+        A host that cannot attribute a tool call sends no role and the gate stays
+        out of the way; an adapter that *can* attribute one must name it, and
+        sends "unknown" rather than None when identity is missing.
+        """
+        approved = self.checkpoint("approved")
+        self.assertTrue(evaluate_action(approved, self.event()).allowed)
+        for role in ("validator", "orchestrator", "unknown", ""):
+            with self.subTest(role=role):
+                self.assertFalse(evaluate_action(approved, dict(self.event(), role=role)).allowed)
+        event = self.event()
+        event.pop("role")
+        self.assertTrue(evaluate_action(approved, event).allowed)
+
     def test_only_an_approved_checkpoint_authorizes_a_post(self):
         self.assertTrue(evaluate_action(self.checkpoint("approved"), self.event()).allowed)
         for status in ("completed", "failed", "abandoned", "attempting", "running", "pending_approval"):
