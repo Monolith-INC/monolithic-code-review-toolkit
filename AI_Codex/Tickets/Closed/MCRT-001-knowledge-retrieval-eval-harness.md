@@ -3,9 +3,9 @@ title: Knowledge retrieval eval harness
 ticket: MCRT-001
 type: ticket
 area: knowledge
-status: resolved
+status: closed
 created: 2026-08-30
-resolved: 2026-08-30
+closed: 2026-08-30
 feature: project-knowledge
 tags:
   - knowledge
