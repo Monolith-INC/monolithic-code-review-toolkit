@@ -40,4 +40,3 @@ Require a human-approved pilot posting before enabling documented posting instru
 The existing portable skills remain the authoritative review behavior and are not replaced by an Agents SDK application.
 The initial delivery is installable from the toolkit and documented only; it is not installed in Aplicatudo or globally as part of this work.
 Existing uncommitted toolkit changes are user-owned and excluded from this implementation unless they overlap a necessary version/release edit.
-
