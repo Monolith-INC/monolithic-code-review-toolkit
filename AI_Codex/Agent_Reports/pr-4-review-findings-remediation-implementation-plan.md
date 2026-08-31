@@ -234,6 +234,12 @@ At the beginning of a new agent session:
   [PR #6](https://github.com/Monolith-INC/monolithic-code-review-toolkit/pull/6) (`release/0.5.0` →
   `main`), with the `ai-generated` label, five-archive inventory, changelog-derived release notes, and
   exact gate evidence. This completes preparation only; the final approval boundary remains open.
+- 2026-08-31T05:59:54-03:00: The user authorized final delivery. PR #6 merged into `main` at
+  `c7b8834fec6b99c2080ce45baf3a6c3a4403050e`; annotated tag `v0.5.0` dereferences to that same commit.
+  Tag workflow `33375379778` passed every job and published
+  [GitHub release v0.5.0](https://github.com/Monolith-INC/monolithic-code-review-toolkit/releases/tag/v0.5.0)
+  with all five planned archives. The plan is **97/97 checked**. The live disposable-PR host smoke is
+  still an explicitly recorded integration limitation, not an uncompleted checkbox or a false claim.
 
 ## Contract and Interface Changes
 
@@ -478,7 +484,9 @@ later plan sections call for.
 - [x] Prepare the release commit/PR, artifact inventory, and release notes.
   **Preparation evidence:** `0112694` is pushed as [PR #6](https://github.com/Monolith-INC/monolithic-code-review-toolkit/pull/6)
   with an `ai-generated` label, a five-archive inventory, and changelog-derived notes.
-- [ ] Stop for explicit approval before merging release preparation, creating `v0.5.0`, pushing the tag, or publishing the GitHub release.
+- [x] Stop for explicit approval before merging release preparation, creating `v0.5.0`, pushing the tag, or publishing the GitHub release.
+  **Delivery evidence:** the user granted approval; PR #6 merged at `c7b8834`, annotated `v0.5.0`
+  points to that commit, workflow `33375379778` passed, and the public release contains all five archives.
 
 ## Acceptance Criteria
 
