@@ -73,5 +73,22 @@ class InstallerTest(unittest.TestCase):
         self.assertEqual(set(record["agent_hashes"]), set(INSTALLER.AGENT_FILENAMES))
 
 
+
+class LifecycleInstructionTest(unittest.TestCase):
+    """The shipped Codex instructions must agree with the enforced state machine."""
+
+    def poster(self) -> str:
+        return (ADAPTER / "agents" / "mcrt_review_poster.toml").read_text(encoding="utf-8")
+
+    def test_the_poster_requires_an_approved_checkpoint(self):
+        body = self.poster()
+        self.assertIn("approved checkpoint", body)
+        self.assertNotIn("completed approval", body)
+
+    def test_the_poster_is_told_to_mark_every_comment(self):
+        """Provenance is the marker now, so an unmarked post cannot be authorized."""
+        self.assertIn("[mcrt:", self.poster())
+
+
 if __name__ == "__main__":
     unittest.main()

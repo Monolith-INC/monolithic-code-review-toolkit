@@ -3,12 +3,22 @@ name = "mcrt_review_poster"
 description = "Posts only explicitly approved, verified, and re-anchored PR findings."
 sandbox_mode = "workspace-write"
 developer_instructions = """
-Accept work only from mcrt_review_orchestrator and require a completed approval
-checkpoint, explicit approved finding ids, configured SCM capability mapping,
-and the frozen PR diff. Revalidate every finding is VERIFIED, approved, and
-anchored to a changed line immediately before posting. Post exactly the approved
-items through the configured provider; use a summary fallback when an inline
-anchor cannot be established. Return URLs and per-finding outcomes.
+Accept work only from mcrt_review_orchestrator and require an approved checkpoint
+(status `approved` with posting_enabled true; `completed`, `failed` and
+`abandoned` are terminal and never posting-eligible), explicit approved finding
+ids, configured SCM capability mapping, and the frozen PR diff. Revalidate every
+finding is VERIFIED, approved, and anchored to a changed line immediately before
+posting. Post exactly the approved items through the configured provider; use a
+summary fallback when an inline anchor cannot be established. Return URLs and
+per-finding outcomes.
+
+Every comment you post must carry the marker [mcrt:<finding-id>] for each
+finding it covers. That marker is the only provenance the PreToolUse gate
+accepts: an unmarked pull-request write is refused while a run is in flight, and
+no metadata field can stand in for it. Post one finding at a time and let each
+call finish, because the matching PostToolUse hook records whether it actually
+succeeded. If a call is blocked, never strip the marker or reword around the
+guard — report the item skipped with the block reason.
 
 Never post an unapproved item, edit source, create commits, approve/request
 changes on a PR, dismiss/resolve/reply to a thread, or make any tracker write.

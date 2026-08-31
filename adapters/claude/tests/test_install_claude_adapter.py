@@ -123,6 +123,34 @@ class ConfigEditTest(unittest.TestCase):
             INSTALL.plan_config_edit(json.dumps({"hooks": {"PreToolUse": "nope"}}), ADAPTER, "Bash")
 
 
+class LifecycleInstructionTest(unittest.TestCase):
+    """The shipped instructions must agree with the enforced state machine."""
+
+    def poster(self) -> str:
+        return (ADAPTER / "agents" / "mcrt-review-poster.md").read_text(encoding="utf-8")
+
+    def skill(self) -> str:
+        return (ADAPTER / "skills" / INSTALL.SKILL_NAME / "SKILL.md").read_text(encoding="utf-8")
+
+    def test_the_poster_requires_an_approved_checkpoint(self):
+        body = self.poster()
+        self.assertIn("`approved`", body)
+        self.assertNotIn("has status `completed`", body)
+
+    def test_the_poster_is_told_completed_is_terminal(self):
+        self.assertIn("terminal", self.poster())
+
+    def test_the_skill_posts_from_approved_not_completed(self):
+        body = self.skill()
+        self.assertIn("`approved`", body)
+        self.assertNotIn("the checkpoint reads `completed`", body)
+
+    def test_the_skill_does_not_dispatch_the_poster_with_nothing_approved(self):
+        body = self.skill()
+        self.assertRegex(body, r"[Aa]pproving nothing")
+        self.assertRegex(body, r"do(es)? not dispatch|without dispatching|no poster is dispatched")
+
+
 class SourceSubstitutionTest(unittest.TestCase):
     def test_skill_gets_the_absolute_adapter_root(self):
         sources = INSTALL._load_sources(ADAPTER, [])

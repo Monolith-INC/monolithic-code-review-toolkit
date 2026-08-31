@@ -27,7 +27,7 @@ skill sequences them and owns every user interaction.
 mappings it records.
 
 Run one worker at a time. Never run two in parallel: the adversarial pass must see the
-validator's frozen output, and the poster must see the completed approval.
+validator's frozen output, and the poster must see the approved checkpoint.
 
 ## Phase 0 — open the run
 
@@ -87,15 +87,25 @@ approval naming anything the adversarial pass did not accept.
 python3.12 __MCRT_ADAPTER_ROOT__/mcrt_review_guards.py complete <checkpoint> <approved.json>
 ```
 
-Approving nothing is a legitimate outcome. Say so plainly and stop.
+Approving nothing is a legitimate outcome. The guard completes the checkpoint with an empty
+`approved_finding_ids`, no poster is dispatched, and there is nothing to post. Say so plainly and
+stop.
 
 ## Phase 5 — posting
 
-Only with an explicit user instruction to post, and only after the checkpoint reads `completed`.
+Only with an explicit user instruction to post, and only while the checkpoint reads `approved`
+with `posting_enabled: true`. That is the posting-eligible state on a v2 project; `completed`,
+`failed` and `abandoned` are terminal and cannot be reopened, and a review that targets no pull
+request completes into `completed` without ever becoming postable. On a v1 project the legacy
+`completed` state still applies.
+
+Do not dispatch the poster when nothing was approved.
 
 Dispatch `mcrt-review-poster` with the checkpoint path and the approved ids. It marks every
 comment `[mcrt:<finding-id>]`, and the `PreToolUse` hook refuses any pull-request write whose ids
-are not approved. The hook is the enforcement; the agent instructions are not.
+are not approved. The matching `PostToolUse` hook records what actually happened, and the run
+reaches `completed` only once every approved finding posted successfully. The hooks are the
+enforcement; the agent instructions are not.
 
 Code fixes are outside this skill. Applying a finding is a separate, explicitly requested action.
 
