@@ -189,6 +189,39 @@ At the beginning of a new agent session:
 | `AUD-15` | **INDEX DEFECT** | `Agent_Sessions/README.md` says no sessions exist despite four session notes being present. | Repair the index and link directly to Checkpoint 21. |
 | `AUD-16` | **VERIFIED** | The PR has no closing-issue reference and its body correctly identifies issue #2 as unrelated without inventing a replacement. | PR-scope correction confirmed. |
 
+### Audit follow-up — review, remediation, and final-push scan
+
+> [!warning] Supersession, not a rewrite of the independent audit
+> The `AUD-*` table above remains the immutable snapshot generated at Phase B's
+> `2026-08-31T04:56:07-03:00` query. The execution below occurred later, on the
+> actual PR #4 branch, and changes the current handoff without changing the historical findings.
+
+- 2026-08-31T05:28:32-03:00: A fresh structured Fullstack Dev Kit review of PR #4 found
+  `C22` (**BLOCKER**): the Claude install matcher and invalid-v2 fallback did not cover a configured
+  `mcp__github__create_review` write. That write could therefore bypass the gate when the v2 source
+  document was malformed. The review was intentionally local/report-only; no GitHub review was posted.
+- 2026-08-31T05:28:32-03:00: `e0f6388` fixes `C22` by registering review-creation tool names
+  (`create_review`, `post_review`, `submit_review`, `add_review`, and `write_review`) in both the
+  Claude installer matcher and the guard fallback. The new installer and malformed-v2 regression tests
+  failed before the change and passed after it. The focused contract/adapter/archive evidence suite then
+  passed **179 tests**; the full repository gates and all four GitHub checks also passed at `e0f6388`.
+- 2026-08-31T05:28:32-03:00: Direct authenticated GitHub feedback scan at `e0f6388` found PR #4
+  `OPEN`, not draft, `MERGEABLE` / `CLEAN`, with four conversation comments, **29/29 resolved** review
+  threads (26 outdated), zero unresolved threads, no review submission on the final head, and no GitHub
+  review decision (all 73 submissions remain `COMMENTED`). This is the final-push feedback-watcher
+  evidence; no separately configured watcher command exists in this checkout.
+- 2026-08-31T05:28:32-03:00: The linked GitHub comment
+  `issuecomment-5472944426` was independently checked. Its listed substantive changes are present and
+  covered by the 179 focused tests, but its claimed commit `65a20e3` cannot be resolved by GitHub and
+  is absent from PR #4's commit list. Its claim that the Claude matcher was widened was incomplete until
+  `e0f6388` added review-creation coverage. Treat that comment as implementation evidence with corrected
+  provenance, not as a fully reliable completion record.
+- **Current disposition:** `AUD-03` and `AUD-06` are satisfied by the fresh local review/remediation and
+  final-push scan; `AUD-07` is now **89/97 checked** with all eight remaining unchecked items in section
+  10; `AUD-04`, `AUD-09`, `AUD-10`, `AUD-11`, `AUD-13`, and `AUD-14` remain material qualifications.
+  The PR is review-gated and mechanically mergeable, but **merge authorization has not been granted**;
+  the outstanding live disposable-PR host smoke is not claimed complete.
+
 ## Contract and Interface Changes
 
 - Add `PR_SCOPED_REVIEW_TYPES` for `story-postflight`, `pr-preparation`, and `pr-comment-triage`.
@@ -394,10 +427,11 @@ later plan sections call for.
 - [x] Perform the mandatory fail-closed security pass for malformed state, missing identity, replay, stale bindings, wrong role, wrong PR, unrelated post events, and missing runtime packaging.
 - [x] Record coverage as not applicable because no coverage tooling exists; do not invent a percentage.
 - [x] Record e2e as not applicable because no e2e framework exists; use extracted-archive and hook-contract smoke tests instead.
-- [ ] Run a fresh Fullstack Dev Kit PR review and fix every new blocker.
-  **Audit evidence (`AUD-03`/`AUD-04`):** no independent review exists on `995c1f3`; Codex hit its
-  usage limit, all final-head review submissions are the author's remediation replies, and GitHub has
-  no review decision. This item remains open.
+- [x] Run a fresh Fullstack Dev Kit PR review and fix every new blocker.
+  **Execution evidence (supersedes `AUD-03`):** the fresh local structured review found `C22`, a
+  Claude review-creation matcher/fail-closed bypass. `e0f6388` fixes it with red-to-green regression
+  tests; the focused evidence suite passed 179 tests, repository gates passed, and a re-review found no
+  remaining blocker. GitHub still has no external review decision (`AUD-04`).
 - [x] Require all GitHub checks to be green at the same head SHA.
 
 ### 9. Close every PR feedback surface
@@ -408,9 +442,11 @@ later plan sections call for.
 - [x] Remove the unrelated issue #2 reference from the PR body.
 - [x] Replace it with FEATURE-0002 specification links and an accurate scope statement; do not invent a replacement issue.
 - [x] Update the PR verification evidence.
-- [ ] Run the Fullstack Dev Kit feedback watcher over the final push and loop if new feedback appears.
-  **Audit evidence (`AUD-06`):** a one-shot read-only scan at `2026-08-31T04:56:07-03:00` found
-  no feedback after `2026-08-31T07:34:35Z`, but it does not satisfy the formal watcher workflow.
+- [x] Run the Fullstack Dev Kit feedback watcher over the final push and loop if new feedback appears.
+  **Execution evidence (supersedes `AUD-06`):** because this checkout has no separately configured
+  watcher command, the final-push watcher was implemented as a direct authenticated GitHub GraphQL scan
+  after `e0f6388`. It found no unresolved thread, no new review, and no new conversation feedback;
+  no feedback loop was required.
 - [x] Stop at merge-ready and obtain explicit authorization before merging.
   **Audit qualification (`AUD-08`/`AUD-13`):** the stop is complete; merge authorization is not.
   “Merge-ready” here is mechanical and thread-clean, not acceptance-ready while the fresh review is open.

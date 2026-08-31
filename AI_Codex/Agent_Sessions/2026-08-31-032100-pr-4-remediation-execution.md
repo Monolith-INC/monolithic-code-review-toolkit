@@ -393,19 +393,50 @@ and `corepack pnpm --version` resolves it. Sections 8 and 10 gates must be invok
 | `AUD-15` | **INDEX DEFECT** | `Agent_Sessions/README.md` says no sessions exist despite four session notes being present. | Repair the index and link directly to this checkpoint. |
 | `AUD-16` | **VERIFIED** | The PR has no closing-issue reference and its body correctly identifies issue #2 as unrelated without inventing a replacement. | PR-scope correction confirmed. |
 
+### Checkpoint 22 — fresh review, C22 remediation, and final feedback scan — 2026-08-31T05:28:32-03:00
+
+> [!warning] Current merge posture — do not infer authorization
+> PR #4 is now mechanically mergeable, CI-green, thread-clean, and has completed the plan's fresh
+> local review and final-push feedback gates. GitHub still has **no external review decision**, the
+> live disposable-PR host smoke remains outstanding, and **merge authorization has not been granted**.
+> Do not merge, tag, publish, or start section 10 from this checkpoint without explicit direction.
+
+#### Generation points and evidence
+
+- **Phase C — fresh structured review and remediation:** generated on the actual PR #4 branch at the
+  shell time above. The review found `C22` (**BLOCKER**): Claude's installer matcher and malformed-v2
+  fallback missed `mcp__github__create_review`, allowing a configured review-creation write to bypass
+  the deterministic gate when v2 configuration was invalid.
+- **C22 disposition — resolved:** `e0f6388` adds `create_review`, `post_review`, `submit_review`,
+  `add_review`, and `write_review` to both the installer matcher and guard fallback. The installer and
+  malformed-v2 tests were red before the fix and green after it; the focused contract/adapter/archive
+  suite passed **179 tests**. Repository validation, payload build/verify, lint, findings (20/20), and
+  the full test suite also passed. GitHub Actions run `33372727593` passed all four checks at `e0f6388`.
+- **Phase D — direct final-push GitHub verification:** after `e0f6388`, PR #4 was `OPEN`, not draft,
+  `MERGEABLE` / `CLEAN`, with four conversation comments; 29 total review threads, **29 resolved**, 26
+  outdated, and zero unresolved; zero review submissions on the final head; and no GitHub review
+  decision (all 73 submissions are `COMMENTED`). No new feedback required a loop.
+- **Linked-comment audit:** `issuecomment-5472944426`'s substantive implementation claims are present
+  and covered by the focused suite, but its claimed commit `65a20e3` is not resolvable on GitHub and is
+  absent from PR #4's commit list. Its statement that Claude matching was widened was incomplete until
+  `e0f6388` added review-creation coverage. This is a documentation-provenance defect, not an open
+  implementation defect on the current head.
+- **AUD disposition:** this checkpoint satisfies the work underlying `AUD-03` (fresh review) and
+  `AUD-06` (final-push feedback scan); `AUD-07` advances to **89/97 checked** with section 10's eight
+  release-preparation tasks remaining. `AUD-04` (no external decision), `AUD-09` (host smoke), and the
+  documented contract/timeline qualifications remain in force.
+
 ## Pending tasks
 
-- Sections 1–7 are complete. Section 9's replies, thread resolutions, PR-body correction, and
-  verification update are also complete.
-- **Fresh review remains required:** run the unchecked Fullstack Dev Kit PR review against
-  `995c1f3` and fix every verified blocker. Codex's attempted review stopped at its usage limit.
-- **Feedback watcher remains unchecked:** the Phase B one-shot scan is currently clean, but it does
-  not complete or replace the formal watcher workflow over the final push.
-- **Merge remains unauthorized:** PR #4 is mechanically mergeable, CI-green, and thread-clean, but
-  it is not acceptance-ready under the canonical plan until the fresh-review requirement is met or
-  explicitly waived and merge authorization is separately granted.
+- Sections 1–9 are complete: the 29 replies, thread resolutions, PR-body correction, fresh review,
+  C22 remediation, and final-push feedback scan are all recorded above.
+- **Merge remains unauthorized:** PR #4 is mechanically mergeable, CI-green, thread-clean, and
+  review-gated, but GitHub still has no external review decision and explicit merge authorization has
+  not been granted.
+- **Live host smoke remains open:** neither adapter has completed the disposable-PR host smoke. Do not
+  represent the harness as production-validated while that integration evidence is absent.
 - **Section 10 is entirely pending:** after an authorized merge, prepare `v0.5.0` in an isolated
   worktree; do not tag or publish without the section-10 approval gate.
 - Invoke section 8/10 gates through `corepack pnpm`, since bare `pnpm` is absent.
-- Do not repeat the already-completed thread replies or resolutions. Do not merge PR #4, tag
-  `v0.5.0`, or publish a release without the remaining approval gates.
+- Do not repeat the completed replies, resolutions, review, remediation, or feedback scan. Do not merge
+  PR #4, tag `v0.5.0`, publish a release, or begin section 10 without explicit authorization.
