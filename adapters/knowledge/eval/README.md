@@ -42,6 +42,17 @@ to measure them and Tier 2 says how to.
   means the decoy wins. That is the mechanical *shadow* of wrong-file confidence, and it is labelled
   as a shadow because a shadow is what it is.
 
+### The clock is pinned
+
+The store's recency bonus is a function of how old a unit is *today*, so on the wall clock every
+number here decays a little each day against a fixture that never changes. `run_eval.py` pins the
+store to `EVAL_TODAY` — the date the fixture units carry — which is what makes the committed
+baseline reproducible rather than a snapshot of one afternoon.
+
+This was not hypothetical. The day after the harness merged, the date rolled over and the ladder
+cost moved 20764 → 20766 on an untouched tree. Left alone it would have drifted until a rank flipped
+and the harness reported a regression nobody caused.
+
 Four assertions are pass/fail rather than scored: the links-only target is unreachable by search and
 reachable by traversal, the assumed trap tops its question while carrying `provenance: assumed`, the
 oversized unit truncates with a handle that advances to new content, and ordering is reproducible.

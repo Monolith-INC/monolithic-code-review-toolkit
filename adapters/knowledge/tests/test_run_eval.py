@@ -14,6 +14,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from datetime import date, timedelta
 from pathlib import Path
 
 ADAPTER = Path(__file__).resolve().parents[1]
@@ -91,6 +92,38 @@ class EvaluateTest(unittest.TestCase):
     def test_is_reproducible(self):
         again = RUNNER.evaluate()
         self.assertEqual(RUNNER.as_baseline(again), RUNNER.as_baseline(self.result))
+
+
+class ClockTest(unittest.TestCase):
+    """The baseline must not decay just because time passed.
+
+    The store's recency bonus is a function of a unit's age, so on the wall clock
+    every number in the eval drifts a little each day against a fixture that never
+    changes. This was not hypothetical: the day after the harness merged, the date
+    rolled over and the ladder cost moved 20764 -> 20766 on an untouched tree.
+    """
+
+    def scores(self, today):
+        store = RUNNER.STORE.KnowledgeStore(RUNNER.FIXTURE, today=today)
+        hits, _ = store.find("payment gateway retry policy backoff", limit=RUNNER.FIND_LIMIT)
+        return [(h.unit_id, h.anchor, h.score) for h in hits]
+
+    def test_the_pin_is_load_bearing(self):
+        """If the clock did not affect scoring, pinning it would prove nothing."""
+        self.assertNotEqual(self.scores(RUNNER.EVAL_TODAY), self.scores(RUNNER.EVAL_TODAY + timedelta(days=400)))
+
+    def test_the_eval_pins_the_clock_to_the_fixture_date(self):
+        self.assertEqual(RUNNER.EVAL_TODAY, date(2026, 8, 30))
+        dates = {unit.updated for unit in RUNNER.STORE.KnowledgeStore(RUNNER.FIXTURE).units.values()}
+        self.assertEqual(dates, {RUNNER.EVAL_TODAY.isoformat()})
+
+    def test_results_do_not_depend_on_when_the_eval_is_run(self):
+        """The whole point: same fixture, same numbers, any day."""
+        pinned = RUNNER.as_baseline(RUNNER.evaluate())
+        baseline = json.loads((EVAL / "baseline.json").read_text(encoding="utf-8"))
+        self.assertEqual(pinned["total_ladder_tokens"], baseline["total_ladder_tokens"])
+        self.assertEqual(pinned["margins"], baseline["margins"])
+        self.assertEqual(pinned["per_question_rank"], baseline["per_question_rank"])
 
 
 class CompareTest(unittest.TestCase):

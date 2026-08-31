@@ -20,7 +20,7 @@ import os
 import re
 import unicodedata
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any, Iterable, Iterator, Sequence
 
@@ -379,11 +379,20 @@ class KnowledgeStore:
     up without a restart.
     """
 
-    def __init__(self, root: Path | str) -> None:
+    def __init__(self, root: Path | str, *, today: date | None = None) -> None:
         self.root = Path(root).expanduser().resolve()
         self._signature: tuple | None = None
         self._units: dict[str, Unit] = {}
         self._backlinks: dict[str, list[str]] = {}
+        # The store asks "what is today?" in two places: the recency bonus when
+        # ranking, and the `updated` stamp when writing. Both go through _today()
+        # so a caller that needs reproducible results can pin the clock. Left
+        # unset it reads the wall clock per call, so a long-lived server still
+        # sees the date roll over.
+        self._pinned_today = today
+
+    def _today(self) -> date:
+        return self._pinned_today or datetime.now(UTC).date()
 
     # ---- loading -----------------------------------------------------------
 
@@ -581,7 +590,7 @@ class KnowledgeStore:
 
             identifier = tokenize(unit.id.replace("/", " ") + " " + unit.title)
             score += 0.5 * sum(1 for term in query if term in identifier)
-            score += _recency_bonus(unit.updated)
+            score += _recency_bonus(unit.updated, self._today())
 
             hits.append(
                 Hit(
@@ -755,7 +764,7 @@ class KnowledgeStore:
         A revision counter a writer has to remember to increment is a revision counter
         that silently stops moving.
         """
-        today = datetime.now(UTC).date().isoformat()
+        today = self._today().isoformat()
         if fmt == "tsv":
             fields, body = parse_tsv_header(text)
             if not fields:
@@ -881,12 +890,12 @@ def _next_version(previous: Unit | None, fields: dict[str, Any]) -> int:
     return 1
 
 
-def _recency_bonus(updated: str) -> float:
+def _recency_bonus(updated: str, today: date) -> float:
     """A small, bounded nudge toward fresher units. Never enough to outrank relevance."""
     if not updated:
         return 0.0
     try:
-        age = (datetime.now(UTC).date() - datetime.fromisoformat(updated).date()).days
+        age = (today - datetime.fromisoformat(updated).date()).days
     except ValueError:
         return 0.0
     return round(0.25 * math.exp(-max(age, 0) / 365), 4)

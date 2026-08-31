@@ -4,6 +4,7 @@ import importlib.util
 import sys
 import tempfile
 import unittest
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
 
@@ -451,6 +452,58 @@ class ParsingTest(unittest.TestCase):
         fields, body = STORE.parse_frontmatter(text)
         unit = STORE.Unit("x", Path("x.md"), "md", fields, body, text, "0" * 12)
         self.assertEqual([section.anchor for section in unit.sections()], ["real"])
+
+
+class ClockTest(unittest.TestCase):
+    """The store asks "what is today?" in two places. Both must go through one clock.
+
+    Unpinned it reads the wall clock, which is right for a running server and wrong
+    for anything that needs to reproduce a number tomorrow.
+    """
+
+    def test_an_unpinned_store_uses_the_wall_clock(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = build_store(tmp)
+            self.assertEqual(store._today(), datetime.now(UTC).date())
+
+    def test_a_pinned_store_uses_the_pin(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = build_store(tmp).root
+            pinned = STORE.KnowledgeStore(root, today=date(2020, 1, 1))
+            self.assertEqual(pinned._today(), date(2020, 1, 1))
+
+    def test_the_recency_bonus_decays_with_age_and_never_goes_negative(self):
+        fresh = STORE._recency_bonus("2026-08-30", date(2026, 8, 30))
+        older = STORE._recency_bonus("2026-08-30", date(2026, 8, 31))
+        ancient = STORE._recency_bonus("2026-08-30", date(2027, 8, 30))
+        self.assertGreater(fresh, older)
+        self.assertGreater(older, ancient)
+        self.assertGreater(ancient, 0.0)
+        # A unit stamped in the future is treated as today, not rewarded for it.
+        self.assertEqual(STORE._recency_bonus("2026-08-30", date(2026, 8, 1)), fresh)
+
+    def test_ranking_is_stable_when_the_clock_is_pinned(self):
+        """Two stores over the same tree, pinned to the same day, rank identically —
+        and pinned to different days, they do not. The second half is what makes
+        the first half worth asserting."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = build_store(tmp).root
+
+            def scored(today):
+                hits, _ = STORE.KnowledgeStore(root, today=today).find("architecture layering")
+                return [(h.unit_id, h.anchor, h.score) for h in hits]
+
+            day = date(2026, 8, 30)
+            self.assertEqual(scored(day), scored(day))
+            self.assertNotEqual(scored(day), scored(day + timedelta(days=500)))
+
+    def test_a_pinned_store_stamps_writes_with_the_pinned_date(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = build_store(tmp).root
+            store = STORE.KnowledgeStore(root, today=date(2020, 1, 1))
+            body = "---\nid: 4-rules/workflow\ntype: rules\n---\n\n## Rule\n\nBranch from main.\n"
+            store.put("4-rules/workflow", body, STORE.NEW_VERSION)
+            self.assertEqual(store.unit("4-rules/workflow").updated, "2020-01-01")
 
 
 if __name__ == "__main__":
