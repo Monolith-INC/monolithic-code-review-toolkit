@@ -67,5 +67,7 @@ AI_Codex/.codex_ledger_skip
 
 # Codex marketplace descriptor. This is catalog metadata, not plugin payload content.
 !.agents/
+.agents/*
 !.agents/plugins/
+.agents/plugins/*
 !.agents/plugins/marketplace.json

@@ -221,6 +221,15 @@ At the beginning of a new agent session:
   10; `AUD-04`, `AUD-09`, `AUD-10`, `AUD-11`, `AUD-13`, and `AUD-14` remain material qualifications.
   The PR is review-gated and mechanically mergeable, but **merge authorization has not been granted**;
   the outstanding live disposable-PR host smoke is not claimed complete.
+- 2026-08-31T05:50:50-03:00: The user authorized and GitHub merged PR #4 into `main` at
+  `0eb44ca634d452e1b3e33481640d354ef9dfc207`; the post-merge CI run `33374219524` succeeded. This
+  opened section 10 only. It did not authorize a release-branch merge, a `v0.5.0` tag, or publication.
+- 2026-08-31T05:50:50-03:00: Release preparation began in isolated worktree `release/0.5.0` from
+  `0eb44ca`. The branch ports only the two generated-agent ignore rules while retaining the tracked
+  `.agents/plugins/marketplace.json`, excludes the user-owned `.mcp.json` newline change, corrects
+  Cursor marketplace metadata from `0.2.3` to `0.5.0`, aligns the requirements header, and dates the
+  completed 0.5.0 changelog section `2026-08-31`. The live disposable-PR host smoke remains unavailable
+  here; extracted-archive/import smoke is executed evidence, not a substitute claim of live-host success.
 
 ## Contract and Interface Changes
 
@@ -453,12 +462,15 @@ later plan sections call for.
 
 ### 10. Prepare v0.5.0 after the authorized merge
 
-- [ ] Create an isolated `release/0.5.0` worktree from updated `main`.
-- [ ] Review the dirty generated-agent branch and port only the intended ignore rule while preserving tracked `.agents/plugins/marketplace.json`.
-- [ ] Exclude the `.mcp.json` newline-only change.
-- [ ] Reconcile `VERSION`, `package.json`, plugin manifest, README pin, product requirements, and changelog to `0.5.0`.
-- [ ] Move completed 0.5.0 notes out of `Unreleased` into a section dated with the actual release date.
-- [ ] Re-run every repository gate, security pass, archive smoke, and release-diff review.
+- [x] Create an isolated `release/0.5.0` worktree from updated `main`.
+- [x] Review the dirty generated-agent branch and port only the intended ignore rule while preserving tracked `.agents/plugins/marketplace.json`.
+- [x] Exclude the `.mcp.json` newline-only change.
+- [x] Reconcile `VERSION`, `package.json`, plugin manifest, README pin, product requirements, and changelog to `0.5.0`.
+- [x] Move completed 0.5.0 notes out of `Unreleased` into a section dated with the actual release date.
+- [x] Re-run every repository gate, security pass, archive smoke, and release-diff review.
+  **Release evidence:** validation, inspection, payload build/verify, lint, findings (20/20), knowledge
+  evaluation, full suite (325 tests; 16 intentional skips), archive tests, and `git diff --check` pass.
+  Structured release-diff review found no blocking correctness, security, contract, or test issue.
 - [ ] Prepare the release commit/PR, artifact inventory, and release notes.
 - [ ] Stop for explicit approval before merging release preparation, creating `v0.5.0`, pushing the tag, or publishing the GitHub release.
 

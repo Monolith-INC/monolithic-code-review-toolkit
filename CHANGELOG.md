@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-08-31
+
 ### Added
 
 - **Knowledge retrieval evaluation** (`pnpm eval:knowledge`). The store shipped in 0.5.0 with every
@@ -46,8 +48,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   caught and two are not, and the aggregates alone missed two of the three — they were caught by the
   per-question rank comparison and the distractor margin, both added because the sweep showed they
   were needed.
-
-## [0.5.0] - 2026-08-30
 
 ### Added
 
@@ -347,7 +347,8 @@ after this release:
 - Installation is host-native: payloads ship as per-host archives and load through each host's own
   mechanism.
 
-[Unreleased]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.4.2...HEAD
+[Unreleased]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.4.2...v0.5.0
 [0.4.2]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/Monolith-INC/monolithic-code-review-toolkit/compare/v0.3.0...v0.4.0
