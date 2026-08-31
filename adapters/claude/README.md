@@ -63,6 +63,11 @@ Restart Claude Code, or run `/reload-skills`, after installing.
 
 ### Provider tools for the poster
 
+`--scm-tool` and `--scm-read-tool` are retained only for existing installs.
+New project overlays must take their capability bindings from validated
+`sources.json` v2; the schema and migration rules live in
+[`docs/review-harness-contracts.md`](../../docs/review-harness-contracts.md).
+
 The poster needs whatever tool actually writes a pull-request comment for your
 provider. For CLI-based providers (GitHub through `gh`) that is `Bash`, which it
 already has, and no flag is needed. For MCP-based providers, name the tools:

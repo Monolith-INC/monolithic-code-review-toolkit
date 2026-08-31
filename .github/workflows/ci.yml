@@ -38,6 +38,22 @@ jobs:
       - name: Run knowledge adapter tests
         run: python -m unittest discover -s adapters/knowledge/tests -t . -v
 
+  # Open review findings, as executable reproductions. Deliberately a separate
+  # job: these fail until the findings they encode are fixed, and folding them
+  # into `checks` would stop the suites after it from running at all — hiding
+  # ordinary regressions behind known ones. Red here means "findings still
+  # open", and the failure list is the checklist.
+  findings:
+    name: review findings (FEATURE-0002)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Reproduce the open review findings
+        run: python -m unittest tests.findings_feature_0002 -v
+
   # Template conformance. Builds the pinned agent-plugins-toolkit and runs its
   # own validator and payload verifier against our plugin root — this is the
   # gate that proves we have not deviated from the template.

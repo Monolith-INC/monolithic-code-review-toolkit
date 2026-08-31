@@ -1,0 +1,993 @@
+{
+  "$defs": {
+    "scm": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/source"
+        },
+        {
+          "properties": {
+            "capabilities": {
+              "propertyNames": {
+                "enum": [
+                  "get_pull_request",
+                  "get_pull_request_diff",
+                  "list_conversation_comments",
+                  "list_review_threads",
+                  "post_inline_comment",
+                  "post_summary_comment",
+                  "reply_to_review_thread"
+                ]
+              }
+            },
+            "owner": {
+              "type": "string"
+            },
+            "repo": {
+              "type": "string"
+            },
+            "unsupported": {
+              "items": {
+                "enum": [
+                  "get_pull_request",
+                  "get_pull_request_diff",
+                  "list_conversation_comments",
+                  "list_review_threads",
+                  "post_inline_comment",
+                  "post_summary_comment",
+                  "reply_to_review_thread"
+                ]
+              }
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "source": {
+      "properties": {
+        "capabilities": {
+          "additionalProperties": false,
+          "properties": {
+            "fetch_parent": {
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "access": {
+                      "const": "read"
+                    },
+                    "effect": {
+                      "const": "tracker.work_item.read"
+                    },
+                    "kind": {
+                      "const": "mcp_tool"
+                    },
+                    "server": {
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+                      "type": "string"
+                    },
+                    "tool": {
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "server",
+                    "tool",
+                    "access",
+                    "effect"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "access": {
+                      "const": "read"
+                    },
+                    "args": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "effect": {
+                      "const": "tracker.work_item.read"
+                    },
+                    "kind": {
+                      "const": "command"
+                    },
+                    "program": {
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "program",
+                    "args",
+                    "access",
+                    "effect"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "access": {
+                      "const": "read"
+                    },
+                    "effect": {
+                      "const": "tracker.work_item.read"
+                    },
+                    "kind": {
+                      "const": "path"
+                    },
+                    "path": {
+                      "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$)).+$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "path",
+                    "access",
+                    "effect"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "fetch_work_item": {
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "access": {
+                      "const": "read"
+                    },
+                    "effect": {
+                      "const": "tracker.work_item.read"
+                    },
+                    "kind": {
+                      "const": "mcp_tool"
+                    },
+                    "server": {
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+                      "type": "string"
+                    },
+                    "tool": {
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "server",
+                    "tool",
+                    "access",
+                    "effect"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "access": {
+                      "const": "read"
+                    },
+                    "args": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "effect": {
+                      "const": "tracker.work_item.read"
+                    },
+                    "kind": {
+                      "const": "command"
+                    },
+                    "program": {
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "program",
+                    "args",
+                    "access",
+                    "effect"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "access": {
+                      "const": "read"
+                    },
+                    "effect": {
+                      "const": "tracker.work_item.read"
+                    },
+                    "kind": {
+                      "const": "path"
+                    },
+                    "path": {
+                      "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$)).+$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "path",
+                    "access",
+                    "effect"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "get_pull_request": {
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "access": {
+                      "const": "read"
+                    },
+                    "effect": {
+                      "const": "scm.pull_request.read"
+                    },
+                    "kind": {
+                      "const": "mcp_tool"
+                    },
+                    "server": {
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+                      "type": "string"
+                    },
+                    "tool": {
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "server",
+                    "tool",
+                    "access",
+                    "effect"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "access": {
+                      "const": "read"
+                    },
+                    "args": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "effect": {
+                      "const": "scm.pull_request.read"
+                    },
+                    "kind": {
+                      "const": "command"
+                    },
+                    "program": {
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "program",
+                    "args",
+                    "access",
+                    "effect"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "access": {
+                      "const": "read"
+                    },
+                    "effect": {
+                      "const": "scm.pull_request.read"
+                    },
+                    "kind": {
+                      "const": "path"
+                    },
+                    "path": {
+                      "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$)).+$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "path",
+                    "access",
+                    "effect"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "get_pull_request_diff": {
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "access": {
+                      "const": "read"
+                    },
+                    "effect": {
+                      "const": "scm.pull_request.read"
+                    },
+                    "kind": {
+                      "const": "mcp_tool"
+                    },
+                    "server": {
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+                      "type": "string"
+                    },
+                    "tool": {
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "server",
+                    "tool",
+                    "access",
+                    "effect"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "access": {
+                      "const": "read"
+                    },
+                    "args": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "effect": {
+                      "const": "scm.pull_request.read"
+                    },
+                    "kind": {
+                      "const": "command"
+                    },
+                    "program": {
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "program",
+                    "args",
+                    "access",
+                    "effect"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "access": {
+                      "const": "read"
+                    },
+                    "effect": {
+                      "const": "scm.pull_request.read"
+                    },
+                    "kind": {
+                      "const": "path"
+                    },
+                    "path": {
+                      "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$)).+$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "path",
+                    "access",
+                    "effect"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "list_conversation_comments": {
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "access": {
+                      "const": "read"
+                    },
+                    "effect": {
+                      "const": "scm.comment.read"
+                    },
+                    "kind": {
+                      "const": "mcp_tool"
+                    },
+                    "server": {
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+                      "type": "string"
+                    },
+                    "tool": {
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "server",
+                    "tool",
+                    "access",
+                    "effect"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "access": {
+                      "const": "read"
+                    },
+                    "args": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "effect": {
+                      "const": "scm.comment.read"
+                    },
+                    "kind": {
+                      "const": "command"
+                    },
+                    "program": {
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "program",
+                    "args",
+                    "access",
+                    "effect"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "access": {
+                      "const": "read"
+                    },
+                    "effect": {
+                      "const": "scm.comment.read"
+                    },
+                    "kind": {
+                      "const": "path"
+                    },
+                    "path": {
+                      "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$)).+$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "path",
+                    "access",
+                    "effect"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "list_linked_artifacts": {
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "access": {
+                      "const": "read"
+                    },
+                    "effect": {
+                      "const": "tracker.artifact.read"
+                    },
+                    "kind": {
+                      "const": "mcp_tool"
+                    },
+                    "server": {
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+                      "type": "string"
+                    },
+                    "tool": {
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "server",
+                    "tool",
+                    "access",
+                    "effect"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "access": {
+                      "const": "read"
+                    },
+                    "args": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "effect": {
+                      "const": "tracker.artifact.read"
+                    },
+                    "kind": {
+                      "const": "command"
+                    },
+                    "program": {
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "program",
+                    "args",
+                    "access",
+                    "effect"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "access": {
+                      "const": "read"
+                    },
+                    "effect": {
+                      "const": "tracker.artifact.read"
+                    },
+                    "kind": {
+                      "const": "path"
+                    },
+                    "path": {
+                      "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$)).+$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "path",
+                    "access",
+                    "effect"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "list_review_threads": {
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "access": {
+                      "const": "read"
+                    },
+                    "effect": {
+                      "const": "scm.review_thread.read"
+                    },
+                    "kind": {
+                      "const": "mcp_tool"
+                    },
+                    "server": {
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+                      "type": "string"
+                    },
+                    "tool": {
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "server",
+                    "tool",
+                    "access",
+                    "effect"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "access": {
+                      "const": "read"
+                    },
+                    "args": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "effect": {
+                      "const": "scm.review_thread.read"
+                    },
+                    "kind": {
+                      "const": "command"
+                    },
+                    "program": {
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "program",
+                    "args",
+                    "access",
+                    "effect"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "access": {
+                      "const": "read"
+                    },
+                    "effect": {
+                      "const": "scm.review_thread.read"
+                    },
+                    "kind": {
+                      "const": "path"
+                    },
+                    "path": {
+                      "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$)).+$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "path",
+                    "access",
+                    "effect"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "post_inline_comment": {
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "access": {
+                      "const": "write"
+                    },
+                    "effect": {
+                      "const": "scm.comment.create"
+                    },
+                    "kind": {
+                      "const": "mcp_tool"
+                    },
+                    "server": {
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+                      "type": "string"
+                    },
+                    "tool": {
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "server",
+                    "tool",
+                    "access",
+                    "effect"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "access": {
+                      "const": "write"
+                    },
+                    "args": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "effect": {
+                      "const": "scm.comment.create"
+                    },
+                    "kind": {
+                      "const": "command"
+                    },
+                    "program": {
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "program",
+                    "args",
+                    "access",
+                    "effect"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "post_summary_comment": {
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "access": {
+                      "const": "write"
+                    },
+                    "effect": {
+                      "const": "scm.comment.create"
+                    },
+                    "kind": {
+                      "const": "mcp_tool"
+                    },
+                    "server": {
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+                      "type": "string"
+                    },
+                    "tool": {
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "server",
+                    "tool",
+                    "access",
+                    "effect"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "access": {
+                      "const": "write"
+                    },
+                    "args": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "effect": {
+                      "const": "scm.comment.create"
+                    },
+                    "kind": {
+                      "const": "command"
+                    },
+                    "program": {
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "program",
+                    "args",
+                    "access",
+                    "effect"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "reply_to_review_thread": {
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "access": {
+                      "const": "write"
+                    },
+                    "effect": {
+                      "const": "scm.review_thread.reply"
+                    },
+                    "kind": {
+                      "const": "mcp_tool"
+                    },
+                    "server": {
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+                      "type": "string"
+                    },
+                    "tool": {
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "server",
+                    "tool",
+                    "access",
+                    "effect"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "access": {
+                      "const": "write"
+                    },
+                    "args": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "effect": {
+                      "const": "scm.review_thread.reply"
+                    },
+                    "kind": {
+                      "const": "command"
+                    },
+                    "program": {
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "program",
+                    "args",
+                    "access",
+                    "effect"
+                  ],
+                  "type": "object"
+                }
+              ]
+            }
+          },
+          "type": "object"
+        },
+        "unsupported": {
+          "items": {
+            "enum": [
+              "fetch_parent",
+              "fetch_work_item",
+              "get_pull_request",
+              "get_pull_request_diff",
+              "list_conversation_comments",
+              "list_linked_artifacts",
+              "list_review_threads",
+              "post_inline_comment",
+              "post_summary_comment",
+              "reply_to_review_thread"
+            ]
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "capabilities",
+        "unsupported"
+      ],
+      "type": "object"
+    },
+    "tracker": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/source"
+        },
+        {
+          "properties": {
+            "capabilities": {
+              "propertyNames": {
+                "enum": [
+                  "fetch_parent",
+                  "fetch_work_item",
+                  "list_linked_artifacts"
+                ]
+              }
+            },
+            "unsupported": {
+              "items": {
+                "enum": [
+                  "fetch_parent",
+                  "fetch_work_item",
+                  "list_linked_artifacts"
+                ]
+              }
+            }
+          },
+          "type": "object"
+        }
+      ]
+    }
+  },
+  "$id": "https://monolith.inc/mcrt/review-harness/sources-v2.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "scm": {
+      "$ref": "#/$defs/scm"
+    },
+    "tracker": {
+      "$ref": "#/$defs/tracker"
+    },
+    "version": {
+      "const": 2
+    }
+  },
+  "required": [
+    "version",
+    "scm",
+    "tracker"
+  ],
+  "title": "MCRT sources.json v2",
+  "type": "object",
+  "x-mcrt-core-contract-version": 1,
+  "x-mcrt-effects": {
+    "fetch_parent": "tracker.work_item.read",
+    "fetch_work_item": "tracker.work_item.read",
+    "get_pull_request": "scm.pull_request.read",
+    "get_pull_request_diff": "scm.pull_request.read",
+    "list_conversation_comments": "scm.comment.read",
+    "list_linked_artifacts": "tracker.artifact.read",
+    "list_review_threads": "scm.review_thread.read",
+    "post_inline_comment": "scm.comment.create",
+    "post_summary_comment": "scm.comment.create",
+    "reply_to_review_thread": "scm.review_thread.reply"
+  },
+  "x-mcrt-write-capabilities": [
+    "post_inline_comment",
+    "post_summary_comment",
+    "reply_to_review_thread"
+  ]
+}

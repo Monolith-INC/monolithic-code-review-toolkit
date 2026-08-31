@@ -96,6 +96,12 @@ renders them into its native shape. This plugin currently declares neither.
 
 ## Requirement sources
 
+The executable shape of that capability contract is now defined in
+[review-harness-contracts.md](review-harness-contracts.md). Product concepts,
+typed tool references and action authorization live in `core/review_harness`;
+the Claude and Codex directories only translate host payloads and install
+host-native configuration.
+
 No skill names a tracker vendor. `review-setup` resolves whatever a consuming repository uses onto
 three capabilities — `fetch_work_item`, `fetch_parent`, `list_linked_artifacts` — and records
 concrete tool names or path templates in `.monolithic-code-review/sources.json`. Capabilities that

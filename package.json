@@ -18,6 +18,7 @@
     "lint:plugin": "python3.12 scripts/validate_plugin.py .",
     "test": "python3.12 -m unittest discover -s tests -t . && python3.12 -m unittest discover -s adapters/codex/tests -t . && python3.12 -m unittest discover -s adapters/claude/tests -t . && python3.12 -m unittest discover -s adapters/knowledge/tests -t .",
     "test:knowledge": "python3.12 -m unittest discover -s adapters/knowledge/tests -t .",
+    "test:findings": "python3.12 -m unittest tests.findings_feature_0002",
     "eval:knowledge": "python3.12 adapters/knowledge/eval/run_eval.py"
   }
 }

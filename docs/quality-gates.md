@@ -26,6 +26,10 @@ version is resolved through `npx` when it is absent.
 | `pnpm lint:plugin`    | Version lockstep, the portable frontmatter contract, and the guard against content adapters would silently drop.             |
 | `pnpm test`           | The validator itself behaves — every failure mode covered, plus an assertion that this repository validates.                 |
 
+The test suite also verifies the review-harness schema snapshot, conservative
+`sources.json` migration, identity-bound approval, and at-most-once posting
+authorization. See [review-harness-contracts.md](review-harness-contracts.md).
+
 `pnpm payloads:verify` recompiles into a temporary directory and compares, so it checks that
 compilation is deterministic. CI runs it after `payloads:build` for that reason.
 

@@ -13,6 +13,9 @@ payloads/
 # Pinned toolkit checkout (cloned on demand by scripts/with_toolkit.sh)
 .toolkit/
 
+# Isolated feature worktrees (local only)
+.worktrees/
+
 # Scaffolding reference material — deleted once scaffolding completes
 _reference/
 
@@ -29,6 +32,14 @@ __pycache__/
 .idea/
 .vscode/
 .DS_Store
+
+# Local AI host setup and generated workflow configuration
+.agent/
+.claude/
+.codex-workflows/
+.codex/
+.cursor/
+.gemini/
 
 # Obsidian local settings (the vault itself IS tracked, see below)
 .obsidian/

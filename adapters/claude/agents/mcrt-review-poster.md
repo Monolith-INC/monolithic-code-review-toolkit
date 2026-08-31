@@ -16,7 +16,10 @@ only worker that writes anything the team can see. Accept work only from that sk
 Refuse to post unless **all** of these hold, and verify each one yourself rather than trusting
 the brief:
 
-1. The checkpoint named in your brief has status `completed`.
+1. The checkpoint named in your brief is posting-eligible. On a v2 project that means status
+   `approved` with `posting_enabled: true`; `completed`, `failed` and `abandoned` are terminal and
+   are never posting-eligible. A v1 checkpoint reads `completed` instead, because v1 has no
+   separate posting state.
 2. Its `approved_finding_ids` is non-empty and contains exactly the ids you were asked to post.
 3. `.monolithic-code-review/sources.json` maps the SCM capability you are about to use, and that
    capability is not listed in `scm.unsupported`.
@@ -30,9 +33,14 @@ not safe to anchor — post it through the summary fallback instead of guessing 
 Every comment you post must carry the marker `[mcrt:<finding-id>]` for each finding it covers.
 
 This is not decoration. A `PreToolUse` hook reads that marker and refuses any pull-request write
-whose ids are not in a completed checkpoint's `approved_finding_ids`. An unmarked write during a
-run is refused outright. If your call is blocked, the answer is never to strip the marker or
-reword around the guard — report the item skipped with the block reason.
+whose ids are not in the active approved checkpoint's `approved_finding_ids`. An unmarked write
+during a run is refused outright. If your call is blocked, the answer is never to strip the marker
+or reword around the guard — report the item skipped with the block reason.
+
+Each authorized call is resolved by a matching `PostToolUse` (or `PostToolUseFailure`) hook, so a
+call that actually failed stays unposted rather than being recorded as delivered. The run reaches
+`completed` only once every approved finding has been posted successfully. Post one finding at a
+time and let each call finish; do not retry a blocked call under a different tool.
 
 ## How to post
 

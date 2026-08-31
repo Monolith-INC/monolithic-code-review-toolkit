@@ -51,12 +51,18 @@ jobs:
           # --exclude: the test steps above import these modules, so __pycache__
           # exists by now. tar does not honour .gitignore, and shipping one
           # runner's bytecode helps nobody.
+          #
+          # core/ ships with each adapter: both import core.review_harness, and a
+          # hook that cannot import it exits 1, which both hosts treat as a
+          # non-blocking hook error — every guarded write would be permitted.
           tar --exclude='__pycache__' \
             -czf "dist/monolithic-code-review-toolkit-${VERSION}-codex-review-orchestrator.tar.gz" \
-            adapters/codex
+            adapters/codex \
+            core
           tar --exclude='__pycache__' \
             -czf "dist/monolithic-code-review-toolkit-${VERSION}-claude-review-orchestrator.tar.gz" \
-            adapters/claude
+            adapters/claude \
+            core
           ls -la dist
 
       # Release notes are this version's changelog section only — passing the

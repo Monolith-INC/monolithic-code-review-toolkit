@@ -4,6 +4,7 @@ import contextlib
 import importlib.util
 import io
 import json
+import re
 import tempfile
 import sys
 import unittest
@@ -82,6 +83,51 @@ class ConfigEditTest(unittest.TestCase):
         self.assertEqual(edit.action, "replace")
         self.assertEqual(len(json.loads(edit.after)["hooks"]["PreToolUse"]), 1)
 
+    def test_the_default_matcher_routes_a_bound_mcp_write_tool(self):
+        """The guarded surface is data-driven now, so the matcher must be wide
+        enough to reach the hook, which does the exact filtering itself."""
+        matcher = INSTALL.DEFAULT_HOOK_MATCHER
+        for tool in (
+            "Bash",
+            "mcp__github__post_comment",
+            "mcp__azure__pull_request_thread_write",
+            "mcp__github__create_review",
+        ):
+            with self.subTest(tool=tool):
+                self.assertTrue(re.search(matcher, tool), f"{matcher!r} does not route {tool}")
+
+    def test_registers_the_guard_for_every_correlated_event(self):
+        """An authorization must be resolved, so the post events are not optional."""
+        settings = json.loads(INSTALL.plan_config_edit("", ADAPTER, "Bash").after)
+        for event in ("PreToolUse", "PostToolUse", "PostToolUseFailure"):
+            with self.subTest(event=event):
+                entries = settings["hooks"][event]
+                self.assertEqual(len(entries), 1)
+                self.assertEqual(entries[0]["matcher"], "Bash")
+                self.assertIn("mcrt_poster_guard_hook.py", entries[0]["hooks"][0]["command"])
+
+    def test_a_matcher_change_replaces_the_entry_in_every_event(self):
+        once = INSTALL.plan_config_edit("", ADAPTER, "Bash").after
+        edit = INSTALL.plan_config_edit(once, ADAPTER, "Bash|.*pr.*")
+        self.assertEqual(edit.action, "replace")
+        settings = json.loads(edit.after)
+        for event in ("PreToolUse", "PostToolUse", "PostToolUseFailure"):
+            with self.subTest(event=event):
+                self.assertEqual(len(settings["hooks"][event]), 1)
+                self.assertEqual(settings["hooks"][event][0]["matcher"], "Bash|.*pr.*")
+
+    def test_preserves_unrelated_post_tool_use_hooks(self):
+        before = json.dumps({
+            "hooks": {"PostToolUse": [{"matcher": "*", "hooks": [{"type": "command", "command": "other.py"}]}]},
+        })
+        after = json.loads(INSTALL.plan_config_edit(before, ADAPTER, "Bash").after)
+        self.assertEqual(len(after["hooks"]["PostToolUse"]), 2)
+        self.assertEqual(after["hooks"]["PostToolUse"][0]["hooks"][0]["command"], "other.py")
+
+    def test_rejects_wrong_shaped_post_tool_use(self):
+        with self.assertRaises(ValueError):
+            INSTALL.plan_config_edit(json.dumps({"hooks": {"PostToolUse": "nope"}}), ADAPTER, "Bash")
+
     def test_rejects_invalid_settings_json(self):
         with self.assertRaises(ValueError):
             INSTALL.plan_config_edit("{not json", ADAPTER, "Bash")
@@ -89,6 +135,34 @@ class ConfigEditTest(unittest.TestCase):
     def test_rejects_wrong_shaped_hooks(self):
         with self.assertRaises(ValueError):
             INSTALL.plan_config_edit(json.dumps({"hooks": {"PreToolUse": "nope"}}), ADAPTER, "Bash")
+
+
+class LifecycleInstructionTest(unittest.TestCase):
+    """The shipped instructions must agree with the enforced state machine."""
+
+    def poster(self) -> str:
+        return (ADAPTER / "agents" / "mcrt-review-poster.md").read_text(encoding="utf-8")
+
+    def skill(self) -> str:
+        return (ADAPTER / "skills" / INSTALL.SKILL_NAME / "SKILL.md").read_text(encoding="utf-8")
+
+    def test_the_poster_requires_an_approved_checkpoint(self):
+        body = self.poster()
+        self.assertIn("`approved`", body)
+        self.assertNotIn("has status `completed`", body)
+
+    def test_the_poster_is_told_completed_is_terminal(self):
+        self.assertIn("terminal", self.poster())
+
+    def test_the_skill_posts_from_approved_not_completed(self):
+        body = self.skill()
+        self.assertIn("`approved`", body)
+        self.assertNotIn("the checkpoint reads `completed`", body)
+
+    def test_the_skill_does_not_dispatch_the_poster_with_nothing_approved(self):
+        body = self.skill()
+        self.assertRegex(body, r"[Aa]pproving nothing")
+        self.assertRegex(body, r"do(es)? not dispatch|without dispatching|no poster is dispatched")
 
 
 class SourceSubstitutionTest(unittest.TestCase):
