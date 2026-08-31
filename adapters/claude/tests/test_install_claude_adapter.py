@@ -82,6 +82,38 @@ class ConfigEditTest(unittest.TestCase):
         self.assertEqual(edit.action, "replace")
         self.assertEqual(len(json.loads(edit.after)["hooks"]["PreToolUse"]), 1)
 
+    def test_registers_the_guard_for_every_correlated_event(self):
+        """An authorization must be resolved, so the post events are not optional."""
+        settings = json.loads(INSTALL.plan_config_edit("", ADAPTER, "Bash").after)
+        for event in ("PreToolUse", "PostToolUse", "PostToolUseFailure"):
+            with self.subTest(event=event):
+                entries = settings["hooks"][event]
+                self.assertEqual(len(entries), 1)
+                self.assertEqual(entries[0]["matcher"], "Bash")
+                self.assertIn("mcrt_poster_guard_hook.py", entries[0]["hooks"][0]["command"])
+
+    def test_a_matcher_change_replaces_the_entry_in_every_event(self):
+        once = INSTALL.plan_config_edit("", ADAPTER, "Bash").after
+        edit = INSTALL.plan_config_edit(once, ADAPTER, "Bash|.*pr.*")
+        self.assertEqual(edit.action, "replace")
+        settings = json.loads(edit.after)
+        for event in ("PreToolUse", "PostToolUse", "PostToolUseFailure"):
+            with self.subTest(event=event):
+                self.assertEqual(len(settings["hooks"][event]), 1)
+                self.assertEqual(settings["hooks"][event][0]["matcher"], "Bash|.*pr.*")
+
+    def test_preserves_unrelated_post_tool_use_hooks(self):
+        before = json.dumps({
+            "hooks": {"PostToolUse": [{"matcher": "*", "hooks": [{"type": "command", "command": "other.py"}]}]},
+        })
+        after = json.loads(INSTALL.plan_config_edit(before, ADAPTER, "Bash").after)
+        self.assertEqual(len(after["hooks"]["PostToolUse"]), 2)
+        self.assertEqual(after["hooks"]["PostToolUse"][0]["hooks"][0]["command"], "other.py")
+
+    def test_rejects_wrong_shaped_post_tool_use(self):
+        with self.assertRaises(ValueError):
+            INSTALL.plan_config_edit(json.dumps({"hooks": {"PostToolUse": "nope"}}), ADAPTER, "Bash")
+
     def test_rejects_invalid_settings_json(self):
         with self.assertRaises(ValueError):
             INSTALL.plan_config_edit("{not json", ADAPTER, "Bash")

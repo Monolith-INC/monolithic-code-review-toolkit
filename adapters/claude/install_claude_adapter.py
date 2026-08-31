@@ -23,9 +23,19 @@ DEFAULT_HOOK_MATCHER = "Bash|.*pull_request.*|.*pr_comment.*|.*issue_comment.*"
 ADAPTER_ROOT_PLACEHOLDER = "__MCRT_ADAPTER_ROOT__"
 SCM_TOOLS_PLACEHOLDER = "__MCRT_SCM_TOOLS__"
 SCM_READ_TOOLS_PLACEHOLDER = "__MCRT_SCM_READ_TOOLS__"
+# The guard is one hook on three events: PreToolUse authorizes the post, and the
+# post events resolve that authorization. Registering only PreToolUse would
+# leave every authorization pending forever.
+HOOK_EVENTS = ("PreToolUse", "PostToolUse", "PostToolUseFailure")
 MANUAL_SNIPPET = """{
   "hooks": {
     "PreToolUse": [
+      {"matcher": "<matcher>", "hooks": [{"type": "command", "command": "python3.12 <adapter>/mcrt_poster_guard_hook.py", "timeout": 5}]}
+    ],
+    "PostToolUse": [
+      {"matcher": "<matcher>", "hooks": [{"type": "command", "command": "python3.12 <adapter>/mcrt_poster_guard_hook.py", "timeout": 5}]}
+    ],
+    "PostToolUseFailure": [
       {"matcher": "<matcher>", "hooks": [{"type": "command", "command": "python3.12 <adapter>/mcrt_poster_guard_hook.py", "timeout": 5}]}
     ]
   }
@@ -91,21 +101,24 @@ def plan_config_edit(contents: str, adapter_root: Path, matcher: str) -> ConfigE
     hooks = settings.setdefault("hooks", {})
     if not isinstance(hooks, dict):
         raise ValueError("settings.json 'hooks' must be an object")
-    pre = hooks.setdefault("PreToolUse", [])
-    if not isinstance(pre, list):
-        raise ValueError("settings.json 'hooks.PreToolUse' must be a list")
-    existing = [index for index, entry in enumerate(pre) if _entry_is_ours(entry, command)]
-    if len(existing) > 1:
-        raise ValueError("settings.json already contains more than one managed MCRT hook entry")
     entry = _hook_entry(adapter_root, matcher)
-    if existing:
-        if pre[existing[0]] == entry:
-            return ConfigEdit("none", contents, contents)
-        pre[existing[0]] = entry
-        action = "replace"
-    else:
-        pre.append(entry)
-        action = "append"
+    actions: set[str] = set()
+    for event in HOOK_EVENTS:
+        registered = hooks.setdefault(event, [])
+        if not isinstance(registered, list):
+            raise ValueError(f"settings.json 'hooks.{event}' must be a list")
+        existing = [index for index, item in enumerate(registered) if _entry_is_ours(item, command)]
+        if len(existing) > 1:
+            raise ValueError(f"settings.json already contains more than one managed MCRT hook entry in {event}")
+        if not existing:
+            registered.append(entry)
+            actions.add("append")
+        elif registered[existing[0]] != entry:
+            registered[existing[0]] = entry
+            actions.add("replace")
+    if not actions:
+        return ConfigEdit("none", contents, contents)
+    action = "append" if "append" in actions else "replace"
     after = json.dumps(settings, indent=2) + "\n"
     return ConfigEdit(action, contents, after)
 
@@ -189,7 +202,7 @@ def install(args: argparse.Namespace) -> int:
         config_path.write_text(edit.after, encoding="utf-8")
     record_path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(f"Installed MCRT Claude review adapter in {base}")
-    print(f"Registered PreToolUse poster guard in {config_path} ({edit.action})")
+    print(f"Registered poster guard for {', '.join(HOOK_EVENTS)} in {config_path} ({edit.action})")
     if not args.scm_tool:
         print("No --scm-tool given: the poster ships without provider MCP tools, which is correct "
               "for CLI-based providers. Add them for an MCP-based provider and reinstall.")
