@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -20,6 +21,17 @@ def review_input(workspace: Path, **overrides):
         "decision": "hold",
         **overrides,
     }
+
+
+def write_v2_sources(workspace: Path) -> None:
+    directory = workspace / ".monolithic-code-review"
+    directory.mkdir(parents=True, exist_ok=True)
+    value = {
+        "version": 2,
+        "scm": {"owner": "Monolith-INC", "repo": "mcrt", "capabilities": {}, "unsupported": []},
+        "tracker": {"capabilities": {}, "unsupported": []},
+    }
+    (directory / "sources.json").write_text(json.dumps(value), encoding="utf-8")
 
 
 def phase_result(**overrides):
@@ -80,6 +92,20 @@ class ReviewGuardTest(unittest.TestCase):
         completed = GUARDS.complete_checkpoint(checkpoint, ["finding-1"])
         self.assertEqual(completed["status"], "completed")
         self.assertEqual(completed["approved_finding_ids"], ["finding-1"])
+
+    def test_v2_approval_binds_repository_identity_for_the_post_hook(self):
+        write_v2_sources(self.workspace)
+        payload = GUARDS.validate_input(review_input(self.workspace, pull_request_id="42"))
+        checkpoint = GUARDS.create_checkpoint(
+            self.workspace, payload, GUARDS.evaluate_quota("unavailable"),
+        )
+        GUARDS.append_worker_result(checkpoint, phase_result())
+        GUARDS.append_adversarial_result(checkpoint, adversarial_result())
+        completed = GUARDS.complete_checkpoint(checkpoint, ["finding-1"])
+        self.assertEqual(completed["schema_version"], 2)
+        self.assertEqual(completed["status"], "approved")
+        self.assertEqual(completed["identity"]["repository"], "Monolith-INC/mcrt")
+        self.assertEqual(completed["identity"]["pull_request_id"], "42")
 
     def test_malformed_or_unverified_result_is_rejected(self):
         with self.assertRaisesRegex(GUARDS.GuardError, "missing fields"):

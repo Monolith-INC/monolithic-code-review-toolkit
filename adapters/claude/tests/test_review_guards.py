@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import tempfile
 import sys
 import unittest
@@ -18,6 +19,17 @@ def load(relative: str, name: str):
     return module
 
 GUARDS = load("mcrt_review_guards.py", "mcrt_review_guards")
+
+
+def write_v2_sources(workspace: Path) -> None:
+    directory = workspace / ".monolithic-code-review"
+    directory.mkdir(parents=True, exist_ok=True)
+    value = {
+        "version": 2,
+        "scm": {"owner": "Monolith-INC", "repo": "mcrt", "capabilities": {}, "unsupported": []},
+        "tracker": {"capabilities": {}, "unsupported": []},
+    }
+    (directory / "sources.json").write_text(json.dumps(value), encoding="utf-8")
 
 
 def review_input(workspace: Path, **overrides):
@@ -172,6 +184,20 @@ class ApprovalTest(unittest.TestCase):
             checkpoint = GUARDS.complete_checkpoint(path, ["finding-1"])
         self.assertEqual(checkpoint["status"], "completed")
         self.assertEqual(checkpoint["approved_finding_ids"], ["finding-1"])
+
+    def test_v2_approval_binds_repository_identity_for_the_poster_gate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            write_v2_sources(workspace)
+            payload = GUARDS.validate_input(review_input(workspace, pull_request_id="42"))
+            path = GUARDS.create_checkpoint(workspace, payload)
+            GUARDS.append_worker_result(path, phase_result())
+            GUARDS.append_adversarial_result(path, adversarial_result())
+            checkpoint = GUARDS.complete_checkpoint(path, ["finding-1"])
+        self.assertEqual(checkpoint["schema_version"], 2)
+        self.assertEqual(checkpoint["status"], "approved")
+        self.assertEqual(checkpoint["identity"]["repository"], "Monolith-INC/mcrt")
+        self.assertEqual(checkpoint["identity"]["pull_request_id"], "42")
 
     def test_cannot_approve_a_rejected_finding(self):
         with tempfile.TemporaryDirectory() as tmp:

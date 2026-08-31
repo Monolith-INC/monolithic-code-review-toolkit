@@ -20,9 +20,9 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from core.review_harness.contracts import REVIEW_SKILLS
+from core.review_harness.contracts import ContractError, REVIEW_SKILLS, binding_digest, validate_sources
 
-PENDING_STATUSES = {"running", "pending_approval", "paused"}
+PENDING_STATUSES = {"running", "pending_approval", "paused", "approved", "attempting"}
 PHASE_RESULT_REQUIRED = {
     "status", "model", "reasoning", "selected_skill", "findings",
     "local_uncertainty", "recommended_next_action",
@@ -174,13 +174,37 @@ def active_checkpoint(workspace: Path) -> Path | None:
     return active[0] if active else None
 
 
+def _v2_identity(workspace: Path, payload: dict[str, Any]) -> dict[str, str] | None:
+    sources_path = workspace / ".monolithic-code-review" / "sources.json"
+    if not sources_path.exists():
+        return None
+    try:
+        raw_sources = json.loads(sources_path.read_text(encoding="utf-8"))
+        if isinstance(raw_sources, dict) and raw_sources.get("version") != 2:
+            return None
+        sources = validate_sources(raw_sources)
+    except (OSError, json.JSONDecodeError, ContractError) as error:
+        raise GuardError(f"invalid v2 sources document: {sources_path}: {error}") from error
+    repository = f"{sources['scm'].get('owner', '')}/{sources['scm'].get('repo', '')}".strip("/")
+    pull_request_id = str(payload.get("pull_request_id", ""))
+    if not repository or not pull_request_id:
+        raise GuardError("a v2 review requires scm owner/repo and pull_request_id identity")
+    return {
+        "workspace": str(workspace),
+        "repository": repository,
+        "pull_request_id": pull_request_id,
+        "binding_digest": binding_digest(sources),
+    }
+
+
 def create_checkpoint(workspace: Path, payload: dict[str, Any], quota: dict[str, str]) -> Path:
     if active_checkpoint(workspace) is not None:
         raise GuardError("an active review-orchestrator checkpoint already exists")
     run_id = uuid4().hex
     path = checkpoint_dir(workspace) / f"checkpoint-{run_id}.json"
-    _write_json(path, {
-        "schema_version": 1,
+    identity = _v2_identity(workspace, payload)
+    checkpoint = {
+        "schema_version": 2 if identity else 1,
         "run_id": run_id,
         "created_at": datetime.now(UTC).isoformat(),
         "status": "paused" if quota["state"] == "paused" else "running",
@@ -188,7 +212,10 @@ def create_checkpoint(workspace: Path, payload: dict[str, Any], quota: dict[str,
         "quota": quota,
         "worker_results": [],
         "approved_finding_ids": [],
-    })
+    }
+    if identity:
+        checkpoint.update({"identity": identity, "attempted_finding_ids": [], "post_outcomes": []})
+    _write_json(path, checkpoint)
     return path
 
 
@@ -228,8 +255,9 @@ def complete_checkpoint(path: Path, approved_ids: list[str]) -> dict[str, Any]:
     if rejected:
         raise GuardError(f"approval includes findings not accepted by the adversarial pass: {rejected}")
     checkpoint["approved_finding_ids"] = [item["id"] for item in approved]
-    checkpoint["status"] = "completed"
-    checkpoint["completed_at"] = datetime.now(UTC).isoformat()
+    is_v2 = checkpoint.get("schema_version") == 2
+    checkpoint["status"] = "approved" if is_v2 else "completed"
+    checkpoint["approved_at" if is_v2 else "completed_at"] = datetime.now(UTC).isoformat()
     _write_json(path, checkpoint)
     return checkpoint
 
