@@ -146,10 +146,10 @@ class CheckpointTest(unittest.TestCase):
         """
         with tempfile.TemporaryDirectory() as tmp:
             root, path, identity = workspace_with(tmp, ["f1", "f2"])
-            event = dict(identity, mcrt=True, finding_ids=["f1"])
+            event = dict(identity, mcrt=True, finding_ids=["f1"], tool_use_id="post-f1")
             self.assertTrue(authorize(path, event).allowed)
 
-            second = dict(identity, mcrt=True, finding_ids=["f2"])
+            second = dict(identity, mcrt=True, finding_ids=["f2"], tool_use_id="post-f2")
             decision = authorize(path, second)
         self.assertTrue(decision.allowed, decision.reason)
 
@@ -273,7 +273,7 @@ class CodexHookTest(unittest.TestCase):
         delivered and can never be retried."""
         with tempfile.TemporaryDirectory() as tmp:
             root, path, identity = workspace_with(tmp, ["f1"])
-            authorize(path, dict(identity, mcrt=True, finding_ids=["f1"]))
+            authorize(path, dict(identity, mcrt=True, finding_ids=["f1"], tool_use_id="the-authorized-post"))
 
             payload = {
                 "hook_event_name": "PostToolUse",
