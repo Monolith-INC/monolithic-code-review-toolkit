@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Iterator
 from uuid import uuid4
 
-from .gate import GateDecision, evaluate_action
+from .gate import ACTIVE_STATUSES, TERMINAL_STATUSES, GateDecision, evaluate_action
 
 
 class CheckpointError(ValueError):
@@ -55,10 +55,26 @@ def _locked(path: Path) -> Iterator[None]:
         lock.unlink(missing_ok=True)
 
 
+def find_active_checkpoint(workspace: Path) -> Path | None:
+    """Return the one active checkpoint for a workspace, if there is one.
+
+    Checkpoint filenames carry a random run id, so lexicographic order says
+    nothing about recency and terminal checkpoints accumulate beside live ones.
+    Selection is therefore by lifecycle status, and both ambiguous and malformed
+    state raise rather than resolving to a guess.
+    """
+    folder = directory(workspace)
+    if not folder.is_dir():
+        return None
+    active = [path for path in sorted(folder.glob("checkpoint-*.json")) if _read(path).get("status") in ACTIVE_STATUSES]
+    if len(active) > 1:
+        raise CheckpointError(f"more than one active review-harness checkpoint exists: {', '.join(path.name for path in active)}")
+    return active[0] if active else None
+
+
 def create(workspace: Path, identity: dict[str, str], approved_finding_ids: list[str] | None = None) -> Path:
     directory(workspace).mkdir(parents=True, exist_ok=True)
-    active = [path for path in directory(workspace).glob("checkpoint-*.json") if _read(path).get("status") in {"running", "pending_input", "pending_approval", "approved", "paused", "attempting"}]
-    if active:
+    if find_active_checkpoint(workspace) is not None:
         raise CheckpointError("an active review-harness checkpoint already exists")
     required = {"workspace", "repository", "pull_request_id", "binding_digest"}
     if set(identity) != required or any(not isinstance(value, str) or not value for value in identity.values()):

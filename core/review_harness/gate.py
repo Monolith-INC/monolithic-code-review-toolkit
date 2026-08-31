@@ -13,7 +13,11 @@ class GateDecision:
     authorization_ids: tuple[str, ...] = ()
 
 
-PENDING = frozenset({"running", "pending_input", "pending_approval", "approved", "paused", "attempting"})
+# A run is active while it can still reach a posting decision.  There is no
+# "attempting" status: an approved run stays approved while individual provider
+# calls are in flight, so a second approved finding is still postable.
+ACTIVE_STATUSES = frozenset({"running", "pending_input", "pending_approval", "approved", "paused"})
+TERMINAL_STATUSES = frozenset({"completed", "failed", "abandoned"})
 
 
 def evaluate_action(checkpoint: dict[str, Any] | None, event: dict[str, Any]) -> GateDecision:
@@ -26,7 +30,7 @@ def evaluate_action(checkpoint: dict[str, Any] | None, event: dict[str, Any]) ->
         return GateDecision(True)
     if not isinstance(checkpoint, dict):
         return GateDecision(False, "MCRT action has no valid checkpoint")
-    if checkpoint.get("status") not in {"approved", "completed"}:
+    if checkpoint.get("status") != "approved":
         return GateDecision(False, "MCRT action is not approved for posting")
     identity = checkpoint.get("identity")
     if not isinstance(identity, dict):
