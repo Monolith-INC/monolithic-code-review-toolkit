@@ -3,7 +3,7 @@ title: PR 4 remediation execution
 type: agent-session
 timestamp: 2026-08-31T03:21:00-03:00
 created: 2026-08-31
-status: active
+status: complete
 next: null
 tags:
   - code-review
@@ -454,13 +454,27 @@ and `corepack pnpm --version` resolves it. Sections 8 and 10 gates must be invok
   `main`). The PR has the `ai-generated` label, five-archive inventory, changelog-derived notes, and
   complete gate evidence. Only the final merge/tag/publication approval remains.
 
+### Checkpoint 24 — v0.5.0 published — 2026-08-31T05:59:54-03:00
+
+> [!success] Plan complete — 97/97 checked
+> The user granted final authorization. PR #6 merged to `main` at `c7b8834fec6b99c2080ce45baf3a6c3a4403050e`.
+> Annotated `v0.5.0` dereferences to that exact commit, and the tag workflow succeeded before creating
+> the public release. No further merge, tag, or release action remains for this plan.
+
+- [PR #6](https://github.com/Monolith-INC/monolithic-code-review-toolkit/pull/6) merged at
+  `2026-08-31T08:57:48Z`; the tag-target and merge commit are identical.
+- Release workflow `33375379778` completed successfully, including repository validation, root/Codex/
+  Claude tests, portable-plugin validation, deterministic payload build/verify, packaging, notes
+  extraction, and GitHub release creation.
+- Published [v0.5.0](https://github.com/Monolith-INC/monolithic-code-review-toolkit/releases/tag/v0.5.0)
+  at `2026-08-31T08:58:32Z` with five assets: Claude, Cursor, and Codex payload archives plus Claude
+  and Codex review-orchestrator archives. The tag is an annotated tag resolving to `c7b8834`.
+- **Known limitation retained:** the live disposable-PR host smoke was not run because no disposable
+  consumer host/provider was configured. Archive extraction/import smoke passed; neither result is
+  substituted for the other.
+
 ## Pending tasks
 
-- PR #4 is merged and post-merge CI-green. Sections 1–9 are complete; section 10 preparation is in
-  progress on `release/0.5.0`.
-- **Live host smoke remains open:** neither adapter has completed the disposable-PR host smoke. Do not
-  represent the harness as production-validated while that integration evidence is absent.
-- **Section 10 approval boundary remains:** PR #6 is prepared; obtain explicit approval before merging
-  release preparation, creating/pushing `v0.5.0`, or publishing.
-- Invoke section 8/10 gates through `corepack pnpm`, since bare `pnpm` is absent.
-- Do not merge the release branch, tag `v0.5.0`, or publish a release without explicit authorization.
+- None. The canonical plan is complete and the release is published.
+- The live disposable-PR host smoke remains a documented integration limitation. It is outside the
+  completed checkbox plan and must not be silently represented as production-host validation.
