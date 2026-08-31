@@ -234,5 +234,74 @@ class ApprovalTest(unittest.TestCase):
                 GUARDS.create_checkpoint(workspace, payload)
 
 
+class PostingEligibilityTest(unittest.TestCase):
+    """A review that has no pull request must not be treated as postable."""
+
+    NON_PR_TYPES = ("task", "story-preflight", "feature")
+
+    def workspace(self) -> Path:
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        workspace = Path(temp.name) / "workspace"
+        workspace.mkdir()
+        write_v2_sources(workspace)
+        return workspace
+
+    def run_to_approval(self, workspace: Path, review_type: str, **overrides):
+        payload = GUARDS.validate_input(review_input(workspace, review_type=review_type, **overrides))
+        path = GUARDS.create_checkpoint(workspace, payload)
+        GUARDS.append_worker_result(path, phase_result(selected_skill=GUARDS.REVIEW_SKILLS[review_type]))
+        GUARDS.append_adversarial_result(path, adversarial_result())
+        return GUARDS.complete_checkpoint(path, ["finding-1"])
+
+    def test_a_non_pr_review_needs_no_pull_request_id(self):
+        for review_type in self.NON_PR_TYPES:
+            with self.subTest(review_type=review_type):
+                workspace = self.workspace()
+                payload = GUARDS.validate_input(review_input(workspace, review_type=review_type, work_item_id="WI-1"))
+                path = GUARDS.create_checkpoint(workspace, payload)
+                checkpoint = json.loads(path.read_text(encoding="utf-8"))
+                self.assertFalse(checkpoint["posting_enabled"])
+                self.assertNotIn("identity", checkpoint)
+
+    def test_a_non_pr_review_completes_without_becoming_postable(self):
+        for review_type in self.NON_PR_TYPES:
+            with self.subTest(review_type=review_type):
+                checkpoint = self.run_to_approval(self.workspace(), review_type, work_item_id="WI-1")
+                self.assertEqual(checkpoint["status"], "completed")
+                self.assertFalse(checkpoint["posting_enabled"])
+
+    def test_a_non_pr_review_cannot_request_a_post(self):
+        workspace = self.workspace()
+        for review_type in self.NON_PR_TYPES:
+            with self.subTest(review_type=review_type):
+                with self.assertRaisesRegex(GUARDS.GuardError, "post"):
+                    GUARDS.validate_input(review_input(
+                        workspace, review_type=review_type, decision="post",
+                        approved_finding_ids=["finding-1"],
+                    ))
+
+    def test_a_pr_scoped_review_binds_posting_identity(self):
+        checkpoint = self.run_to_approval(self.workspace(), "story-postflight", pull_request_id="42")
+        self.assertEqual(checkpoint["status"], "approved")
+        self.assertTrue(checkpoint["posting_enabled"])
+        self.assertEqual(checkpoint["identity"]["repository"], "Monolith-INC/mcrt")
+        self.assertEqual(checkpoint["identity"]["pull_request_id"], "42")
+
+    def test_a_pr_scoped_review_still_requires_its_pull_request_id(self):
+        workspace = self.workspace()
+        payload = GUARDS.validate_input(review_input(workspace, review_type="story-postflight"))
+        with self.assertRaisesRegex(GUARDS.GuardError, "pull_request_id"):
+            GUARDS.create_checkpoint(workspace, payload)
+
+    def test_an_attempting_checkpoint_is_not_active(self):
+        workspace = self.workspace()
+        payload = GUARDS.validate_input(review_input(workspace, review_type="task", work_item_id="WI-1"))
+        path = GUARDS.create_checkpoint(workspace, payload)
+        checkpoint = json.loads(path.read_text(encoding="utf-8"))
+        path.write_text(json.dumps(dict(checkpoint, status="attempting")), encoding="utf-8")
+        self.assertIsNone(GUARDS.active_checkpoint(workspace))
+
+
 if __name__ == "__main__":
     unittest.main()
