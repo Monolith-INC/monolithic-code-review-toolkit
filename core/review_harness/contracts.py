@@ -13,6 +13,7 @@ import json
 import re
 import shlex
 from copy import deepcopy
+from functools import lru_cache
 from typing import Any
 
 CORE_CONTRACT_VERSION = 1
@@ -142,9 +143,68 @@ def validate_sources(value: Any) -> dict[str, Any]:
     return result
 
 
-def binding_digest(sources: dict[str, Any]) -> str:
-    """Hash normalized bindings; a later config change invalidates approval."""
-    normalized = validate_sources(sources)
+@lru_cache(maxsize=128)
+def _token_pattern(token: str) -> tuple[tuple[str, ...], re.Pattern[str]]:
+    """Compile one command-template token into a capturing pattern.
+
+    Only registry placeholders capture; every other character is literal, so a
+    template can never match an argument it does not describe exactly.
+    """
+    names: list[str] = []
+    pattern: list[str] = []
+    for part in re.split(r"(\{[^}]*\})", token):
+        if not part:
+            continue
+        if PLACEHOLDER.fullmatch(part):
+            names.append(part[1:-1])
+            pattern.append("(.+?)")
+        else:
+            pattern.append(re.escape(part))
+    return tuple(names), re.compile("".join(pattern))
+
+
+def match_command_binding(binding: Any, argv: Any) -> dict[str, str] | None:
+    """Match an invoked argv against a validated command binding.
+
+    Returns the captured placeholder values when the invocation matches the
+    template exactly, and ``None`` otherwise.  Hosts call this instead of
+    guessing a pull request id from tool input keys, so a command post is
+    identified by the binding it was registered under.
+    """
+    if not isinstance(binding, dict) or binding.get("kind") != "command":
+        return None
+    if not isinstance(argv, list) or not argv or not all(isinstance(item, str) for item in argv):
+        return None
+    program = binding.get("program")
+    template = binding.get("args")
+    if not isinstance(program, str) or not isinstance(template, list):
+        return None
+    if argv[0] != program and re.split(r"[\\/]", argv[0])[-1] != program:
+        return None
+    if len(argv) - 1 != len(template):
+        return None
+    captured: dict[str, str] = {}
+    for token, actual in zip(template, argv[1:]):
+        if not isinstance(token, str):
+            return None
+        names, pattern = _token_pattern(token)
+        found = pattern.fullmatch(actual)
+        if found is None:
+            return None
+        for index, name in enumerate(names, start=1):
+            value = found.group(index)
+            if captured.setdefault(name, value) != value:
+                return None
+    return captured
+
+
+def binding_digest(sources: dict[str, Any], *, prevalidated: bool = False) -> str:
+    """Hash normalized bindings; a later config change invalidates approval.
+
+    Pass ``prevalidated=True`` with the document returned by
+    ``validate_sources`` so a gated hook validates it once per tool call.
+    """
+    normalized = sources if prevalidated else validate_sources(sources)
     bindings = {area: normalized[area].get("capabilities", {}) for area in ("scm", "tracker")}
     encoded = json.dumps(bindings, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()

@@ -2,12 +2,20 @@ from __future__ import annotations
 
 import tempfile
 import unittest
+import unittest.mock
 import json
 from copy import deepcopy
 from pathlib import Path
 
 from core.review_harness.checkpoints import CheckpointError, abandon, authorize, create, inspect, record_outcome, resume
-from core.review_harness.contracts import ContractError, binding_digest, migrate_sources_v1, validate_sources
+from core.review_harness import contracts
+from core.review_harness.contracts import (
+    ContractError,
+    binding_digest,
+    match_command_binding,
+    migrate_sources_v1,
+    validate_sources,
+)
 from core.review_harness.gate import evaluate_action
 from core.review_harness.schemas import sources_schema
 
@@ -163,6 +171,90 @@ class SourcesContractTest(unittest.TestCase):
         self.assertIsNone(migrated)
         self.assertEqual(v1, before, "an ambiguous document must not be partially migrated")
         self.assertTrue(any("rerun review-setup" in item for item in diagnostics))
+
+
+class PrevalidatedDigestTest(unittest.TestCase):
+    def test_a_prevalidated_document_is_not_validated_again(self):
+        normalized = validate_sources(sources())
+        with unittest.mock.patch.object(
+            contracts, "validate_sources", wraps=contracts.validate_sources
+        ) as spy:
+            digest = binding_digest(normalized, prevalidated=True)
+        self.assertEqual(spy.call_count, 0)
+        self.assertEqual(digest, binding_digest(sources()))
+
+    def test_an_unvalidated_document_is_still_validated_once(self):
+        with unittest.mock.patch.object(
+            contracts, "validate_sources", wraps=contracts.validate_sources
+        ) as spy:
+            binding_digest(sources())
+        self.assertEqual(spy.call_count, 1)
+
+
+class CommandBindingMatchTest(unittest.TestCase):
+    def binding(self, args: list[str]) -> dict:
+        return {
+            "kind": "command", "program": "gh", "args": args,
+            "access": "write", "effect": "scm.comment.create",
+        }
+
+    def test_a_matching_argv_yields_the_captured_placeholders(self):
+        binding = self.binding(["pr", "comment", "{pull_request_id}", "--body", "{body}"])
+        self.assertEqual(
+            match_command_binding(binding, ["gh", "pr", "comment", "42", "--body", "text [mcrt:f1]"]),
+            {"pull_request_id": "42", "body": "text [mcrt:f1]"},
+        )
+
+    def test_a_placeholder_embedded_in_a_flag_is_captured(self):
+        binding = self.binding(["pr", "comment", "{pull_request_id}", "--body-file={body_file}"])
+        self.assertEqual(
+            match_command_binding(binding, ["gh", "pr", "comment", "7", "--body-file=/tmp/body.md"]),
+            {"pull_request_id": "7", "body_file": "/tmp/body.md"},
+        )
+
+    def test_a_template_without_placeholders_matches_and_captures_nothing(self):
+        binding = self.binding(["pr", "list"])
+        self.assertEqual(match_command_binding(binding, ["gh", "pr", "list"]), {})
+
+    def test_a_literal_mismatch_does_not_match(self):
+        binding = self.binding(["pr", "comment", "{pull_request_id}"])
+        self.assertIsNone(match_command_binding(binding, ["gh", "issue", "comment", "42"]))
+
+    def test_a_different_argument_count_does_not_match(self):
+        binding = self.binding(["pr", "comment", "{pull_request_id}"])
+        self.assertIsNone(match_command_binding(binding, ["gh", "pr", "comment", "42", "--body", "x"]))
+        self.assertIsNone(match_command_binding(binding, ["gh", "pr", "comment"]))
+
+    def test_another_program_does_not_match(self):
+        binding = self.binding(["pr", "comment", "{pull_request_id}"])
+        self.assertIsNone(match_command_binding(binding, ["glab", "pr", "comment", "42"]))
+
+    def test_an_absolute_program_path_still_matches(self):
+        binding = self.binding(["pr", "comment", "{pull_request_id}"])
+        self.assertEqual(
+            match_command_binding(binding, ["/usr/local/bin/gh", "pr", "comment", "42"]),
+            {"pull_request_id": "42"},
+        )
+
+    def test_a_repeated_placeholder_must_capture_the_same_value(self):
+        binding = self.binding(["pr", "comment", "{pull_request_id}", "--repo-pr", "{pull_request_id}"])
+        self.assertEqual(
+            match_command_binding(binding, ["gh", "pr", "comment", "42", "--repo-pr", "42"]),
+            {"pull_request_id": "42"},
+        )
+        self.assertIsNone(
+            match_command_binding(binding, ["gh", "pr", "comment", "42", "--repo-pr", "43"])
+        )
+
+    def test_a_placeholder_cannot_absorb_a_literal_neighbour(self):
+        binding = self.binding(["pr", "comment", "{pull_request_id}", "--body", "{body}"])
+        self.assertIsNone(match_command_binding(binding, ["gh", "pr", "comment", "42", "--bodyx", "t"]))
+
+    def test_a_non_command_binding_never_matches(self):
+        mcp = {"kind": "mcp_tool", "server": "github", "tool": "post_comment", "access": "write", "effect": "scm.comment.create"}
+        self.assertIsNone(match_command_binding(mcp, ["gh", "pr", "comment", "42"]))
+        self.assertIsNone(match_command_binding(None, ["gh"]))
+        self.assertIsNone(match_command_binding(self.binding(["pr"]), []))
 
 
 class GateTest(unittest.TestCase):

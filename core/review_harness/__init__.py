@@ -5,6 +5,7 @@ from .contracts import (
     REVIEW_SKILLS,
     ContractError,
     binding_digest,
+    match_command_binding,
     migrate_sources_v1,
     validate_sources,
 )
@@ -17,6 +18,7 @@ __all__ = [
     "GateDecision",
     "binding_digest",
     "evaluate_action",
+    "match_command_binding",
     "migrate_sources_v1",
     "validate_sources",
 ]
