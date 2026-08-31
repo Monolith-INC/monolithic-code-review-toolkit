@@ -449,6 +449,10 @@ and `corepack pnpm --version` resolves it. Sections 8 and 10 gates must be invok
 - The live disposable-PR host smoke remains outstanding because no disposable consumer host/provider
   is configured here. Archive extraction/import smoke is completed, but must not be represented as
   live-host validation.
+- Committed release preparation as `0112694` and opened
+  [PR #6](https://github.com/Monolith-INC/monolithic-code-review-toolkit/pull/6) (`release/0.5.0` →
+  `main`). The PR has the `ai-generated` label, five-archive inventory, changelog-derived notes, and
+  complete gate evidence. Only the final merge/tag/publication approval remains.
 
 ## Pending tasks
 
@@ -456,7 +460,7 @@ and `corepack pnpm --version` resolves it. Sections 8 and 10 gates must be invok
   progress on `release/0.5.0`.
 - **Live host smoke remains open:** neither adapter has completed the disposable-PR host smoke. Do not
   represent the harness as production-validated while that integration evidence is absent.
-- **Section 10 approval boundary remains:** after the release diff/PR and artifact inventory are ready,
-  obtain explicit approval before merging release preparation, creating/pushing `v0.5.0`, or publishing.
+- **Section 10 approval boundary remains:** PR #6 is prepared; obtain explicit approval before merging
+  release preparation, creating/pushing `v0.5.0`, or publishing.
 - Invoke section 8/10 gates through `corepack pnpm`, since bare `pnpm` is absent.
 - Do not merge the release branch, tag `v0.5.0`, or publish a release without explicit authorization.

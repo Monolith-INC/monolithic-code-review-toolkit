@@ -230,6 +230,10 @@ At the beginning of a new agent session:
   Cursor marketplace metadata from `0.2.3` to `0.5.0`, aligns the requirements header, and dates the
   completed 0.5.0 changelog section `2026-08-31`. The live disposable-PR host smoke remains unavailable
   here; extracted-archive/import smoke is executed evidence, not a substitute claim of live-host success.
+- 2026-08-31T05:50:50-03:00: Release preparation was committed as `0112694` and opened as
+  [PR #6](https://github.com/Monolith-INC/monolithic-code-review-toolkit/pull/6) (`release/0.5.0` →
+  `main`), with the `ai-generated` label, five-archive inventory, changelog-derived release notes, and
+  exact gate evidence. This completes preparation only; the final approval boundary remains open.
 
 ## Contract and Interface Changes
 
@@ -471,7 +475,9 @@ later plan sections call for.
   **Release evidence:** validation, inspection, payload build/verify, lint, findings (20/20), knowledge
   evaluation, full suite (325 tests; 16 intentional skips), archive tests, and `git diff --check` pass.
   Structured release-diff review found no blocking correctness, security, contract, or test issue.
-- [ ] Prepare the release commit/PR, artifact inventory, and release notes.
+- [x] Prepare the release commit/PR, artifact inventory, and release notes.
+  **Preparation evidence:** `0112694` is pushed as [PR #6](https://github.com/Monolith-INC/monolithic-code-review-toolkit/pull/6)
+  with an `ai-generated` label, a five-archive inventory, and changelog-derived notes.
 - [ ] Stop for explicit approval before merging release preparation, creating `v0.5.0`, pushing the tag, or publishing the GitHub release.
 
 ## Acceptance Criteria
