@@ -57,6 +57,7 @@ def evaluate(payload: dict[str, Any]) -> str | None:
         "finding_ids": ids, "workspace": str(workspace), "repository": repository,
         "pull_request_id": str(tool_input.get("pull_request_id", tool_input.get("pr", ""))),
         "binding_digest": binding_digest(sources),
+        "tool_use_id": payload.get("tool_use_id"),
     }
     try:
         decision = authorize(path, event)
@@ -79,7 +80,8 @@ def main() -> int:
         if path and isinstance(tool_use_id, str):
             try:
                 checkpoint = json.loads(path.read_text(encoding="utf-8"))
-                if checkpoint.get("status") == "attempting":
+                pending = checkpoint.get("pending_posts")
+                if isinstance(pending, dict) and tool_use_id in pending:
                     record_outcome(path, tool_use_id, True)
             except (OSError, json.JSONDecodeError, CheckpointError):
                 return 2

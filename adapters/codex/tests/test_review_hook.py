@@ -33,7 +33,7 @@ class CodexHookTest(unittest.TestCase):
             (workspace / ".monolithic-code-review" / "sources.json").write_text(json.dumps(value), encoding="utf-8")
             identity = {"workspace": str(workspace), "repository": "Monolith-INC/mcrt", "pull_request_id": "42", "binding_digest": binding_digest(value)}
             create(workspace, identity, ["finding-1"])
-            payload = {"hook_event_name": "PreToolUse", "cwd": str(workspace), "agent_type": "mcrt_review_poster", "tool_name": "mcp__github__post_comment", "tool_input": {"mcrt_finding_ids": ["finding-1"], "pull_request_id": "42"}}
+            payload = {"hook_event_name": "PreToolUse", "cwd": str(workspace), "agent_type": "mcrt_review_poster", "tool_name": "mcp__github__post_comment", "tool_use_id": "call-1", "tool_input": {"mcrt_finding_ids": ["finding-1"], "pull_request_id": "42"}}
             self.assertIsNone(HOOK.evaluate(payload))
             self.assertIsNotNone(HOOK.evaluate(payload))
 
@@ -45,7 +45,7 @@ class CodexHookTest(unittest.TestCase):
             (workspace / ".monolithic-code-review" / "sources.json").write_text(json.dumps(value), encoding="utf-8")
             identity = {"workspace": str(workspace), "repository": "Monolith-INC/mcrt", "pull_request_id": "42", "binding_digest": binding_digest(value)}
             path = create(workspace, identity, ["finding-1"])
-            pre = {"hook_event_name": "PreToolUse", "cwd": str(workspace), "agent_type": "mcrt_review_poster", "tool_name": "mcp__github__post_comment", "tool_input": {"mcrt_finding_ids": ["finding-1"], "pull_request_id": "42"}}
+            pre = {"hook_event_name": "PreToolUse", "cwd": str(workspace), "agent_type": "mcrt_review_poster", "tool_name": "mcp__github__post_comment", "tool_use_id": "call-1", "tool_input": {"mcrt_finding_ids": ["finding-1"], "pull_request_id": "42"}}
             self.assertIsNone(HOOK.evaluate(pre))
             old_stdin = sys.stdin
             try:

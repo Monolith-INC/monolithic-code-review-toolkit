@@ -89,6 +89,7 @@ def create(workspace: Path, identity: dict[str, str], approved_finding_ids: list
         "identity": identity,
         "approved_finding_ids": approved_finding_ids or [],
         "attempted_finding_ids": [],
+        "pending_posts": {},
         "post_outcomes": [],
     })
     return path
@@ -114,7 +115,7 @@ def abandon(path: Path, reason: str) -> dict[str, Any]:
         raise CheckpointError("abandon reason must be non-empty")
     with _locked(path):
         checkpoint = _read(path)
-        if checkpoint.get("status") in {"completed", "failed", "abandoned"}:
+        if checkpoint.get("status") in TERMINAL_STATUSES:
             raise CheckpointError("terminal checkpoint cannot be abandoned")
         checkpoint.update({"status": "abandoned", "abandoned_at": _now(), "abandon_reason": reason})
         _write(path, checkpoint)
@@ -122,27 +123,72 @@ def abandon(path: Path, reason: str) -> dict[str, Any]:
 
 
 def authorize(path: Path, event: dict[str, Any]) -> GateDecision:
-    """Atomically consume finding ids before a host hook permits a post."""
+    """Atomically consume finding ids before a host hook permits a post.
+
+    The authorization is correlated with the host's tool call: the same
+    ``tool_use_id`` must come back through ``record_outcome``, so an unrelated
+    call cannot close the run and a failed post cannot be reported as a success.
+    The checkpoint stays ``approved`` while calls are in flight, so a run with
+    several approved findings can post all of them.
+    """
+    tool_use_id = event.get("tool_use_id")
+    if not isinstance(tool_use_id, str) or not tool_use_id:
+        raise CheckpointError("an MCRT authorization must carry the host tool_use_id")
     with _locked(path):
         checkpoint = _read(path)
         decision = evaluate_action(checkpoint, event)
         if not decision.allowed:
             return decision
+        pending = checkpoint.setdefault("pending_posts", {})
+        if not isinstance(pending, dict):
+            raise CheckpointError("checkpoint pending_posts is malformed")
+        if tool_use_id in pending:
+            return GateDecision(False, f"MCRT tool call is already authorized: {tool_use_id}")
         checkpoint["attempted_finding_ids"] = sorted(set(checkpoint.get("attempted_finding_ids", [])) | set(decision.authorization_ids))
-        checkpoint["status"] = "attempting"
+        pending[tool_use_id] = {"finding_ids": list(decision.authorization_ids), "authorized_at": _now()}
         checkpoint["last_authorized_at"] = _now()
         _write(path, checkpoint)
         return decision
 
 
 def record_outcome(path: Path, tool_use_id: str, succeeded: bool, detail: str | None = None) -> dict[str, Any]:
+    """Record the result of one authorized provider call.
+
+    Only a pending authorization can be resolved, and only once.  A failure
+    fails the run without reopening the findings it already consumed; the run
+    completes only when every approved finding has a successful outcome and no
+    call is still in flight.
+    """
     if not isinstance(tool_use_id, str) or not tool_use_id:
         raise CheckpointError("tool_use_id must be non-empty")
     with _locked(path):
         checkpoint = _read(path)
-        checkpoint.setdefault("post_outcomes", []).append({
-            "tool_use_id": tool_use_id, "succeeded": bool(succeeded), "detail": detail, "recorded_at": _now(),
+        if checkpoint.get("status") in TERMINAL_STATUSES:
+            raise CheckpointError(f"a {checkpoint.get('status')} checkpoint cannot record an outcome")
+        pending = checkpoint.get("pending_posts")
+        if not isinstance(pending, dict) or tool_use_id not in pending:
+            raise CheckpointError(f"no pending MCRT authorization for tool call {tool_use_id}")
+        authorization = pending.pop(tool_use_id)
+        finding_ids = authorization.get("finding_ids", []) if isinstance(authorization, dict) else []
+        outcomes = checkpoint.setdefault("post_outcomes", [])
+        if not isinstance(outcomes, list):
+            raise CheckpointError("checkpoint post_outcomes is malformed")
+        outcomes.append({
+            "tool_use_id": tool_use_id,
+            "finding_ids": list(finding_ids) if isinstance(finding_ids, list) else [],
+            "succeeded": bool(succeeded), "detail": detail, "recorded_at": _now(),
         })
-        checkpoint["status"] = "completed" if succeeded else "failed"
+        if not succeeded:
+            checkpoint.update({"status": "failed", "failed_at": _now()})
+        else:
+            posted = {
+                finding
+                for outcome in outcomes
+                if isinstance(outcome, dict) and outcome.get("succeeded")
+                for finding in outcome.get("finding_ids", [])
+            }
+            approved = set(checkpoint.get("approved_finding_ids", []))
+            if approved and approved <= posted and not pending:
+                checkpoint.update({"status": "completed", "completed_at": _now()})
         _write(path, checkpoint)
         return checkpoint

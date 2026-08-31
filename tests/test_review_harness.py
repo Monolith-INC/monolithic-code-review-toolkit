@@ -339,7 +339,7 @@ class GateTest(unittest.TestCase):
 
     def event(self, **overrides):
         return {
-            "mcrt": True, "role": "poster", "finding_ids": ["finding-1"],
+            "mcrt": True, "role": "poster", "finding_ids": ["finding-1"], "tool_use_id": "tool-1",
             **self.identity, **overrides,
         }
 
@@ -349,12 +349,12 @@ class GateTest(unittest.TestCase):
     def test_authorizes_once_then_denies_a_repeat(self):
         path = create(self.workspace, self.identity, ["finding-1"])
         self.assertTrue(authorize(path, self.event()).allowed)
-        self.assertFalse(authorize(path, self.event()).allowed)
+        self.assertFalse(authorize(path, self.event(tool_use_id="tool-2")).allowed)
 
     def test_denies_identity_and_approval_mismatches(self):
         path = create(self.workspace, self.identity, ["finding-1"])
         self.assertFalse(authorize(path, self.event(pull_request_id="43")).allowed)
-        self.assertFalse(authorize(path, self.event(finding_ids=["finding-2"])).allowed)
+        self.assertFalse(authorize(path, self.event(tool_use_id="tool-2", finding_ids=["finding-2"])).allowed)
 
     def test_resume_abandon_and_outcome_are_explicit(self):
         path = create(self.workspace, self.identity)
