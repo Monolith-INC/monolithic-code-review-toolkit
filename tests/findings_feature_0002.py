@@ -38,8 +38,10 @@ from core.review_harness.checkpoints import (
     directory,
     record_outcome,
 )
+from core.review_harness import contracts as contracts_module
 from core.review_harness.contracts import ContractError, binding_digest, migrate_sources_v1, validate_sources
 from core.review_harness.gate import evaluate_action
+from core.review_harness.schemas import sources_schema
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -57,6 +59,7 @@ def load(relative: str, name: str):
 CODEX_HOOK = load("adapters/codex/mcrt_review_hook.py", "_findings_codex_hook")
 CLAUDE_HOOK = load("adapters/claude/mcrt_poster_guard_hook.py", "_findings_claude_hook")
 CLAUDE_INSTALLER = load("adapters/claude/install_claude_adapter.py", "_findings_claude_installer")
+CODEX_INSTALLER = load("adapters/codex/install_codex_adapter.py", "_findings_codex_installer")
 
 
 def sources() -> dict:
@@ -353,6 +356,150 @@ class ReleaseTest(unittest.TestCase):
                 command,
                 f"the {vendor} orchestrator archive does not ship the core package the adapter imports",
             )
+
+
+class SchemaTest(unittest.TestCase):
+    def access_values(self, schema: dict, capability: str) -> set[str]:
+        """What the emitted schema permits for one capability's `access`.
+
+        Handles both the current generic shape (one binding definition under
+        additionalProperties) and a capability-specific one, so the test does not
+        prescribe how the fix is written.
+        """
+        container = schema["$defs"]["source"]["properties"]["capabilities"]
+        definition = container.get("properties", {}).get(capability, container.get("additionalProperties"))
+
+        found: set[str] = set()
+
+        def walk(node):
+            if isinstance(node, dict):
+                for key, value in node.items():
+                    if key == "access" and isinstance(value, dict):
+                        if "enum" in value:
+                            found.update(value["enum"])
+                        if "const" in value:
+                            found.add(value["const"])
+                    else:
+                        walk(value)
+            elif isinstance(node, list):
+                for item in node:
+                    walk(item)
+
+        walk(definition)
+        return found
+
+    def test_the_schema_agrees_with_the_runtime_on_a_write_capability(self):
+        """schemas.py:14-16 applies one generic binding to every capability, so the
+        published schema accepts `post_inline_comment` with `access: "read"` while
+        `validate_binding` rejects it. Setup or editor tooling validating against
+        the shipped schema can therefore bless a document the hooks refuse.
+        """
+        with self.assertRaises(ContractError):
+            validate_sources({
+                "version": 2,
+                "scm": {"capabilities": {"post_inline_comment": {
+                    "kind": "mcp_tool", "server": "github", "tool": "post_comment",
+                    "access": "read", "effect": "scm.comment.create",
+                }}, "unsupported": []},
+                "tracker": {"capabilities": {}, "unsupported": []},
+            })
+        self.assertNotIn(
+            "read",
+            self.access_values(sources_schema(), "post_inline_comment"),
+            "the schema permits an access the runtime rejects",
+        )
+
+
+class CodexInstallerTest(unittest.TestCase):
+    def managed(self) -> dict[str, bytes]:
+        return CODEX_INSTALLER._load_sources(CODEX_INSTALLER._adapter_root())
+
+    def test_a_previous_release_install_can_be_upgraded(self):
+        """install_codex_adapter.py:137 — the back-compat default synthesizes
+        {"agents/<name>": digest} from a legacy record, but expected_hashes now
+        always carries the new skill entry too, so the dicts differ by
+        construction and every existing managed install is refused as
+        incompatible. The shim is dead code and the upgrade path is closed.
+        """
+        sources_map = self.managed()
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp) / "codex"
+            for name, data in sources_map.items():
+                target = base / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                # A previous-release install carries the agents but not the skill.
+                if not name.startswith("agents/"):
+                    continue
+                target.write_bytes(data)
+
+            record = Path(tmp) / "record.json"
+            record.write_text(json.dumps({"agent_hashes": {
+                name.removeprefix("agents/"): CODEX_INSTALLER._sha256(data)
+                for name, data in sources_map.items() if name.startswith("agents/")
+            }}), encoding="utf-8")
+
+            config = Path(tmp) / "config.toml"
+            config.write_text("[agents]\nmax_depth = 40\n", encoding="utf-8")
+
+            try:
+                CODEX_INSTALLER._preflight(base, config, record, sources_map)
+            except ValueError as error:
+                self.fail(f"a previous-release install could not be upgraded: {error}")
+
+    def test_the_generated_config_is_parseable_with_an_awkward_path(self):
+        """install_codex_adapter.py:107 interpolates a filesystem path straight
+        into a TOML basic string. A backslash (Windows) or a quote makes
+        config.toml unparseable."""
+        import tomllib
+
+        edit = CODEX_INSTALLER.plan_config_edit("", Path('/tmp/a "quoted"\\path/codex'))
+        try:
+            tomllib.loads(edit.after)
+        except tomllib.TOMLDecodeError as error:
+            self.fail(f"the installer emitted unparseable TOML: {error}")
+
+    def test_the_hooks_do_not_match_every_tool_call(self):
+        """install_codex_adapter.py:106,108 register matcher = ".*" on both
+        PreToolUse and PostToolUse, so every Read, Edit and Grep in every Codex
+        session spawns an interpreter that imports the core package, reads and
+        revalidates sources.json, and globs the checkpoint directory — twice per
+        tool call. The Claude installer deliberately narrows its matcher for this
+        exact reason.
+        """
+        edit = CODEX_INSTALLER.plan_config_edit("", Path("/tmp/codex"))
+        self.assertNotIn('matcher = ".*"', edit.after)
+
+
+class HotPathTest(unittest.TestCase):
+    def test_one_gated_call_validates_the_document_once(self):
+        """mcrt_poster_guard_hook.py:125 — `evaluate` already resolved `sources`
+        and `ids` before delegating, and `_evaluate_v2` recomputes both; then
+        `binding_digest` validates the same normalized document a third time.
+        Inside a synchronous PreToolUse hook with timeout = 5, this is the hot
+        path.
+        """
+        calls = []
+        real = contracts_module.validate_sources
+
+        def counting(value):
+            calls.append(value)
+            return real(value)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root, _, _ = workspace_with(tmp, ["f1"])
+            CLAUDE_HOOK.validate_sources = counting
+            contracts_module.validate_sources = counting
+            try:
+                CLAUDE_HOOK.evaluate(
+                    "mcp__github__post_comment",
+                    {"body": "the issue [mcrt:f1] is real", "pull_request_id": "42"},
+                    root,
+                )
+            finally:
+                CLAUDE_HOOK.validate_sources = real
+                contracts_module.validate_sources = real
+
+        self.assertEqual(len(calls), 1, f"sources.json was validated {len(calls)} times for one tool call")
 
 
 class _Stdin:
