@@ -189,12 +189,15 @@ class ApprovalTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
             write_v2_sources(workspace)
-            payload = GUARDS.validate_input(review_input(workspace, pull_request_id="42"))
+            payload = GUARDS.validate_input(review_input(
+                workspace, review_type="story-postflight", pull_request_id="42",
+            ))
             path = GUARDS.create_checkpoint(workspace, payload)
-            GUARDS.append_worker_result(path, phase_result())
+            GUARDS.append_worker_result(path, phase_result(selected_skill="review-story-postflight"))
             GUARDS.append_adversarial_result(path, adversarial_result())
             checkpoint = GUARDS.complete_checkpoint(path, ["finding-1"])
         self.assertEqual(checkpoint["schema_version"], 2)
+        self.assertTrue(checkpoint["posting_enabled"])
         self.assertEqual(checkpoint["status"], "approved")
         self.assertEqual(checkpoint["identity"]["repository"], "Monolith-INC/mcrt")
         self.assertEqual(checkpoint["identity"]["pull_request_id"], "42")

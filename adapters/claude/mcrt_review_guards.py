@@ -26,13 +26,14 @@ if str(ROOT) not in sys.path:
 
 from core.review_harness.contracts import (
     ContractError,
+    PR_SCOPED_REVIEW_TYPES,
     REVIEW_SKILLS,
     binding_digest,
     validate_sources,
 )
+from core.review_harness.gate import ACTIVE_STATUSES
 
 SKILL_NAMESPACE = "monolithic-code-review-toolkit"
-PENDING_STATUSES = {"running", "pending_input", "pending_approval", "approved", "attempting"}
 PHASE_RESULT_REQUIRED = {
     "status", "agent", "selected_skill", "findings",
     "local_uncertainty", "recommended_next_action",
@@ -86,6 +87,8 @@ def validate_input(payload: dict[str, Any]) -> dict[str, Any]:
         raise GuardError("approved_finding_ids must be a list of non-empty strings")
     if decision == "post" and not approved:
         raise GuardError("post requires at least one approved finding id")
+    if decision == "post" and review_type not in PR_SCOPED_REVIEW_TYPES:
+        raise GuardError(f"a {review_type} review has no pull request to post to")
     lenses = payload.get("lenses", [])
     if not isinstance(lenses, list) or not set(lenses) <= {"typescript", "maintainability", "all"}:
         raise GuardError("lenses must contain only typescript, maintainability, or all")
@@ -204,14 +207,15 @@ def active_checkpoint(workspace: Path) -> Path | None:
     active = []
     for path in sorted(directory.glob("checkpoint-*.json")):
         checkpoint = _read_json(path)
-        if checkpoint.get("status") in PENDING_STATUSES:
+        if checkpoint.get("status") in ACTIVE_STATUSES:
             active.append(path)
     if len(active) > 1:
         raise GuardError("more than one active review-orchestrator checkpoint exists")
     return active[0] if active else None
 
 
-def _v2_identity(workspace: Path, payload: dict[str, Any]) -> dict[str, str] | None:
+def _v2_sources(workspace: Path) -> dict[str, Any] | None:
+    """Return the validated v2 binding document, or None when the project is v1."""
     sources_path = workspace / ".monolithic-code-review" / "sources.json"
     if not sources_path.exists():
         return None
@@ -219,18 +223,28 @@ def _v2_identity(workspace: Path, payload: dict[str, Any]) -> dict[str, str] | N
         raw_sources = json.loads(sources_path.read_text(encoding="utf-8"))
         if isinstance(raw_sources, dict) and raw_sources.get("version") != 2:
             return None
-        sources = validate_sources(raw_sources)
+        return validate_sources(raw_sources)
     except (OSError, json.JSONDecodeError, ContractError) as error:
         raise GuardError(f"invalid v2 sources document: {sources_path}: {error}") from error
+
+
+def _posting_identity(workspace: Path, payload: dict[str, Any], sources: dict[str, Any] | None) -> dict[str, str] | None:
+    """Bind posting identity, but only for a review that targets a pull request.
+
+    A task, story-preflight or feature review reports against a work item, so it
+    has no repository/PR identity to bind and never reaches the posting gate.
+    """
+    if sources is None or payload.get("review_type") not in PR_SCOPED_REVIEW_TYPES:
+        return None
     repository = f"{sources['scm'].get('owner', '')}/{sources['scm'].get('repo', '')}".strip("/")
     pull_request_id = str(payload.get("pull_request_id", ""))
     if not repository or not pull_request_id:
-        raise GuardError("a v2 review requires scm owner/repo and pull_request_id identity")
+        raise GuardError("a PR-scoped v2 review requires scm owner/repo and pull_request_id identity")
     return {
         "workspace": str(workspace),
         "repository": repository,
         "pull_request_id": pull_request_id,
-        "binding_digest": binding_digest(sources),
+        "binding_digest": binding_digest(sources, prevalidated=True),
     }
 
 
@@ -239,9 +253,11 @@ def create_checkpoint(workspace: Path, payload: dict[str, Any]) -> Path:
         raise GuardError("an active review-orchestrator checkpoint already exists")
     run_id = uuid4().hex
     path = checkpoint_dir(workspace) / f"checkpoint-{run_id}.json"
-    identity = _v2_identity(workspace, payload)
+    sources = _v2_sources(workspace)
+    identity = _posting_identity(workspace, payload, sources)
     checkpoint = {
-        "schema_version": 2 if identity else 1,
+        "schema_version": 2 if sources is not None else 1,
+        "posting_enabled": identity is not None,
         "run_id": run_id,
         "created_at": datetime.now(UTC).isoformat(),
         "status": "running",
@@ -251,7 +267,9 @@ def create_checkpoint(workspace: Path, payload: dict[str, Any]) -> Path:
         "approved_finding_ids": [],
     }
     if identity:
-        checkpoint.update({"identity": identity, "attempted_finding_ids": [], "post_outcomes": []})
+        checkpoint.update({
+            "identity": identity, "attempted_finding_ids": [], "pending_posts": {}, "post_outcomes": [],
+        })
     _write_json(path, checkpoint)
     return path
 
@@ -327,9 +345,9 @@ def complete_checkpoint(path: Path, approved_ids: list[str]) -> dict[str, Any]:
     if rejected:
         raise GuardError(f"approval includes findings not accepted by the adversarial pass: {rejected}")
     checkpoint["approved_finding_ids"] = [item["id"] for item in approved]
-    is_v2 = checkpoint.get("schema_version") == 2
-    checkpoint["status"] = "approved" if is_v2 else "completed"
-    checkpoint["approved_at" if is_v2 else "completed_at"] = datetime.now(UTC).isoformat()
+    postable = isinstance(checkpoint.get("identity"), dict) and checkpoint.get("posting_enabled", True)
+    checkpoint["status"] = "approved" if postable else "completed"
+    checkpoint["approved_at" if postable else "completed_at"] = datetime.now(UTC).isoformat()
     _write_json(path, checkpoint)
     return checkpoint
 

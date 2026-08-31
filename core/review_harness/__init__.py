@@ -2,6 +2,7 @@
 
 from .contracts import (
     CORE_CONTRACT_VERSION,
+    PR_SCOPED_REVIEW_TYPES,
     REVIEW_SKILLS,
     ContractError,
     binding_digest,
@@ -13,6 +14,7 @@ from .gate import GateDecision, evaluate_action
 
 __all__ = [
     "CORE_CONTRACT_VERSION",
+    "PR_SCOPED_REVIEW_TYPES",
     "REVIEW_SKILLS",
     "ContractError",
     "GateDecision",

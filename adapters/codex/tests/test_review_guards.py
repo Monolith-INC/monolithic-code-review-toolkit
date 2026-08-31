@@ -95,14 +95,17 @@ class ReviewGuardTest(unittest.TestCase):
 
     def test_v2_approval_binds_repository_identity_for_the_post_hook(self):
         write_v2_sources(self.workspace)
-        payload = GUARDS.validate_input(review_input(self.workspace, pull_request_id="42"))
+        payload = GUARDS.validate_input(review_input(
+            self.workspace, review_type="story-postflight", pull_request_id="42",
+        ))
         checkpoint = GUARDS.create_checkpoint(
             self.workspace, payload, GUARDS.evaluate_quota("unavailable"),
         )
-        GUARDS.append_worker_result(checkpoint, phase_result())
+        GUARDS.append_worker_result(checkpoint, phase_result(selected_skill="review-story-postflight"))
         GUARDS.append_adversarial_result(checkpoint, adversarial_result())
         completed = GUARDS.complete_checkpoint(checkpoint, ["finding-1"])
         self.assertEqual(completed["schema_version"], 2)
+        self.assertTrue(completed["posting_enabled"])
         self.assertEqual(completed["status"], "approved")
         self.assertEqual(completed["identity"]["repository"], "Monolith-INC/mcrt")
         self.assertEqual(completed["identity"]["pull_request_id"], "42")

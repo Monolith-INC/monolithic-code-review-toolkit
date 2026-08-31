@@ -35,6 +35,10 @@ REVIEW_SKILLS = {
     "pr-preparation": "prepare-pr-for-review",
     "pr-comment-triage": "triage-pr-comments",
 }
+# Only these lifecycle reviews target a pull request, so only they can bind a
+# posting identity or ask to post.  A task, story-preflight or feature review
+# reports against a work item and has nothing to post to.
+PR_SCOPED_REVIEW_TYPES = frozenset({"story-postflight", "pr-preparation", "pr-comment-triage"})
 ROLE_IDS = frozenset({"orchestrator", "discovery", "validator", "adversarial", "poster"})
 READ_CAPABILITIES = frozenset({
     "get_pull_request", "get_pull_request_diff", "list_review_threads",
