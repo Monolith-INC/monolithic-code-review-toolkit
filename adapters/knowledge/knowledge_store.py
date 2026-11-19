@@ -13,20 +13,21 @@ host with no MCP server can reach the same data with `cat` and `grep`.
 from __future__ import annotations
 
 import difflib
-import fcntl
 import hashlib
 import math
 import os
 import re
 import unicodedata
-from dataclasses import dataclass
+from contextlib import contextmanager
+from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime
 from pathlib import Path
-from typing import Any, Iterable, Iterator, Sequence
+from typing import Any, Callable, Iterable, Iterator, Sequence
 
 SCHEMA_VERSION = 1
 CATALOG_NAME = "catalog.tsv"
 MANIFEST_NAME = "manifest.md"
+WRITE_LOCK_NAME = "knowledge-write.lock"
 CATALOG_COLUMNS = ("id", "type", "area", "title", "path", "provenance", "updated", "read_when")
 
 UNIT_TYPES = ("identity", "structure", "mechanics", "rules", "evolution")
@@ -371,6 +372,42 @@ class Hit:
     snippet: str
 
 
+ReadView = Callable[[Unit], str]
+
+
+def _project_unit(unit: Unit, view: ReadView | None) -> Unit:
+    """Project a body for retrieval while retaining the stored unit's version."""
+    match view:
+        case None:
+            return unit
+        case project:
+            body = project(unit)
+            header = unit.raw[:len(unit.raw) - len(unit.body)]
+            return replace(unit, body=body, raw=header + body)
+
+
+@contextmanager
+def _store_write_lock(root: Path) -> Iterator[None]:
+    """Serialize unit and catalog changes on the same physical store."""
+    root.mkdir(parents=True, exist_ok=True)
+    with (root / WRITE_LOCK_NAME).open("a+b") as lock:
+        match os.name:
+            case "nt":
+                import msvcrt
+
+                lock.seek(0)
+                msvcrt.locking(lock.fileno(), msvcrt.LK_LOCK, 1)
+                try:
+                    yield
+                finally:
+                    msvcrt.locking(lock.fileno(), msvcrt.LK_UNLCK, 1)
+            case _:
+                import fcntl
+
+                fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+                yield
+
+
 class KnowledgeStore:
     """Read and write a knowledge store rooted at `root`.
 
@@ -541,9 +578,12 @@ class KnowledgeStore:
         area: str | None = None,
         status: str | None = "current",
         limit: int = 8,
+        *,
+        view: ReadView | None = None,
     ) -> tuple[list[Hit], dict[str, Any]]:
         """Locations, never documents. Returns (hits, guidance).
 
+        A supplied view selects the text before section indexing and ranking.
         `guidance` is populated only when there are no hits: facet values that do
         exist, near-miss vocabulary, and nearest unit ids. A zero-result response
         that teaches nothing costs a turn and earns nothing.
@@ -552,7 +592,7 @@ class KnowledgeStore:
         candidates = self._candidates(path_prefix, type, area, status)
 
         documents: list[tuple[Unit, Section, list[str]]] = []
-        for unit in candidates:
+        for unit in (_project_unit(candidate, view) for candidate in candidates):
             metadata = tokenize(" ".join([unit.id.replace("/", " "), unit.title, unit.area, unit.read_when]))
             for section in unit.sections():
                 documents.append((unit, section, tokenize(section.text) + metadata))
@@ -640,9 +680,15 @@ class KnowledgeStore:
         end_line: int | None = None,
         start_column: int = 0,
         max_tokens: int | None = None,
+        *,
+        view: ReadView | None = None,
     ) -> dict[str, Any]:
-        """One unit, one anchor, or one line range — always with its version token."""
-        unit = self.unit(unit_id)
+        """Fetch from the stored unit or a projected view and retain the stored version.
+
+        With a view, line positions and continuation offsets refer to that view.
+        Resume a continuation with the same view and unit revision.
+        """
+        unit = _project_unit(self.unit(unit_id), view)
 
         if anchor:
             matches = [section for section in unit.sections() if section.anchor == anchor]
@@ -764,6 +810,7 @@ class KnowledgeStore:
         A revision counter a writer has to remember to increment is a revision counter
         that silently stops moving.
         """
+        text = text.replace("\r\n", "\n").replace("\r", "\n")
         today = self._today().isoformat()
         if fmt == "tsv":
             fields, body = parse_tsv_header(text)
@@ -788,26 +835,25 @@ class KnowledgeStore:
 
     def _write(self, unit_id: str, path: Path, text: str, if_version: str) -> dict[str, Any]:
         """Atomically replace a unit after validating its version under a file lock."""
-        path.parent.mkdir(parents=True, exist_ok=True)
-        lock_path = self.root / ".locks" / (hashlib.sha256(str(path).encode()).hexdigest() + ".lock")
-        lock_path.parent.mkdir(parents=True, exist_ok=True)
-        with lock_path.open("a+", encoding="utf-8") as lock:
-            fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
-            current = self._read_unit(path) if path.exists() else None
-            if current is None:
-                if if_version != NEW_VERSION:
+        with _store_write_lock(self.root):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            current = self._read_unit(path) if path.exists() else self.units.get(unit_id)
+            match current:
+                case None if if_version != NEW_VERSION:
                     raise StoreError(
                         f"{unit_id} no longer exists; pass if_version={NEW_VERSION!r} to create it"
                     )
-            elif if_version == NEW_VERSION or current.version != if_version:
-                raise VersionConflict(unit_id, if_version, current.version, current.raw)
+                case Unit(version=version, raw=raw) if if_version == NEW_VERSION or version != if_version:
+                    raise VersionConflict(unit_id, if_version, version, raw)
+                case Unit(path=observed) if observed != path:
+                    raise StoreError(f"{unit_id} moved to a different file; fetch it and retry")
 
             temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
             try:
-                temporary.write_text(text, encoding="utf-8")
+                temporary.write_text(text, encoding="utf-8", newline="\n")
                 os.replace(temporary, path)
                 self._signature = None
-                self.write_catalog()
+                self._write_catalog_locked()
             finally:
                 temporary.unlink(missing_ok=True)
         self._signature = None  # force a reload on the next read
@@ -850,6 +896,11 @@ class KnowledgeStore:
 
     def write_catalog(self) -> Path:
         """Regenerate the routing table from the units, sorted so it is byte-stable."""
+        with _store_write_lock(self.root):
+            self._signature = None
+            return self._write_catalog_locked()
+
+    def _write_catalog_locked(self) -> Path:
         rows = self.catalog()
         lines = ["\t".join(CATALOG_COLUMNS)]
         lines.extend("\t".join(_tsv_cell(row[column]) for column in CATALOG_COLUMNS) for row in rows)
@@ -857,7 +908,7 @@ class KnowledgeStore:
         path.parent.mkdir(parents=True, exist_ok=True)
         temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
         try:
-            temporary.write_text("\n".join(lines) + "\n", encoding="utf-8")
+            temporary.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
             os.replace(temporary, path)
         finally:
             temporary.unlink(missing_ok=True)

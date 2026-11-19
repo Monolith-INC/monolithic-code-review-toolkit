@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import importlib.util
+import json
+import subprocess
 import sys
 import tempfile
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
@@ -122,6 +125,142 @@ def build_store(tmp: str) -> "STORE.KnowledgeStore":
     (root / "3-mechanics" / "testing.md").write_text(TESTING, encoding="utf-8")
     (root / "3-mechanics" / "dependencies.tsv").write_text(DEPENDENCIES, encoding="utf-8")
     return STORE.KnowledgeStore(root)
+
+
+def concurrent_puts(root: Path, writes: tuple[tuple[str, str, str], ...]) -> list[str]:
+    script = """
+import json
+import sys
+sys.path.insert(0, sys.argv[1])
+from knowledge_store import KnowledgeStore, VersionConflict
+root, unit, text, version = json.loads(sys.argv[2])
+try:
+    KnowledgeStore(root).put(unit, text, version)
+except VersionConflict:
+    print("conflict")
+else:
+    print("written")
+"""
+
+    def put(write: tuple[str, str, str]) -> str:
+        result = subprocess.run(
+            [sys.executable, "-B", "-c", script, str(ADAPTER), json.dumps((str(root), *write))],
+            check=True, capture_output=True, text=True, timeout=20,
+        )
+        return result.stdout.strip()
+
+    with ThreadPoolExecutor(max_workers=len(writes)) as pool:
+        return list(pool.map(put, writes))
+
+
+class ReadViewTest(unittest.TestCase):
+    def test_projection_excludes_old_sections_before_ranking_and_fetch(self):
+        def current(unit: "STORE.Unit") -> str:
+            _, heading, body = unit.body.partition("## Current procedure")
+            return heading + body
+
+        with tempfile.TemporaryDirectory() as tmp:
+            store = STORE.KnowledgeStore(tmp)
+            unit_id = "3-mechanics/procedure"
+            raw = "## Obsolete procedure\n\nravenport\n\n## Current procedure\n\namberfield\n"
+            written = store.put(unit_id, raw, STORE.NEW_VERSION)
+            history, _ = store.find("ravenport")
+            obsolete, _ = store.find("ravenport", view=current, limit=1)
+            active, _ = store.find("amberfield", view=current, limit=1)
+            projected = store.fetch(unit_id, view=current)
+            self.assertEqual([hit.anchor for hit in history], ["obsolete-procedure"])
+            self.assertEqual(obsolete, [])
+            self.assertEqual([hit.anchor for hit in active], ["current-procedure"])
+            self.assertEqual(projected["content"], "## Current procedure\n\namberfield\n")
+            self.assertEqual(projected["version"], written["version"])
+            self.assertEqual(store.fetch(unit_id)["content"], raw)
+            with self.assertRaises(STORE.StoreError):
+                store.fetch(unit_id, anchor="obsolete-procedure", view=current)
+
+    def test_projected_continuation_uses_projected_line_numbers(self):
+        def current(unit: "STORE.Unit") -> str:
+            return unit.body.split("\n", 1)[1]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            store = STORE.KnowledgeStore(tmp)
+            unit_id = "3-mechanics/procedure"
+            store.put(unit_id, "retired\nalpha\nbeta\ngamma\n", STORE.NEW_VERSION)
+            first = store.fetch(unit_id, max_tokens=2, view=current)
+            self.assertEqual(first["content"], "alpha")
+            continuation = first["continuation"]
+            self.assertEqual(store.fetch(unit_id, start_line=continuation["start_line"], view=current)["content"], "beta\ngamma")
+
+
+class PortableWriteTest(unittest.TestCase):
+    def test_concurrent_writes_keep_the_catalog_in_sync_without_hidden_folders(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = STORE.KnowledgeStore(tmp)
+            writes = (
+                ("3-mechanics/first", "First fact\n", STORE.NEW_VERSION),
+                ("3-mechanics/second", "Second fact\n", STORE.NEW_VERSION),
+            )
+            self.assertEqual(concurrent_puts(store.root, writes), ["written", "written"])
+            catalog = (store.root / STORE.CATALOG_NAME).read_text(encoding="utf-8")
+            self.assertIn("3-mechanics/first\t", catalog)
+            self.assertIn("3-mechanics/second\t", catalog)
+            self.assertTrue((store.root / STORE.WRITE_LOCK_NAME).is_file())
+            self.assertFalse((store.root / ".locks").exists())
+
+    def test_two_processes_cannot_replace_the_same_version(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = STORE.KnowledgeStore(tmp)
+            unit = "3-mechanics/decision"
+            version = store.put(unit, "Initial\n", STORE.NEW_VERSION)["version"]
+            writes = ((unit, "First contender\n", version), (unit, "Second contender\n", version))
+            self.assertCountEqual(concurrent_puts(store.root, writes), ["written", "conflict"])
+            self.assertIn(store.fetch(unit)["content"], ("First contender\n", "Second contender\n"))
+
+    def test_competing_new_units_with_different_formats_share_one_identity(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = STORE.KnowledgeStore(tmp)
+            unit = "3-mechanics/decision"
+            writes = ((unit, "Markdown fact\n", STORE.NEW_VERSION), (unit, "name\tvalue\n", STORE.NEW_VERSION))
+            self.assertCountEqual(concurrent_puts(store.root, writes), ["written", "conflict"])
+            self.assertEqual(tuple((store.root / "3-mechanics").glob("decision.*")), (store.unit(unit).path,))
+
+    def test_rebuild_recovers_after_unit_replacement_and_catalog_failure(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = STORE.KnowledgeStore(tmp)
+            unit = "3-mechanics/decision"
+            with patch.object(store, "_write_catalog_locked", side_effect=OSError("simulated write failure")):
+                with self.assertRaisesRegex(OSError, "simulated write failure"):
+                    store.put(unit, "Recovered fact\n", STORE.NEW_VERSION)
+            reopened = STORE.KnowledgeStore(tmp)
+            self.assertEqual(reopened.fetch(unit)["content"], "Recovered fact\n")
+            self.assertIn(unit, reopened.write_catalog().read_text(encoding="utf-8"))
+
+    def test_store_lock_survives_an_abrupt_writer_exit(self):
+        script = """
+import os
+import sys
+from pathlib import Path
+sys.path.insert(0, sys.argv[1])
+from knowledge_store import _store_write_lock
+with _store_write_lock(Path(sys.argv[2])):
+    os._exit(42)
+"""
+        with tempfile.TemporaryDirectory() as tmp:
+            result = subprocess.run(
+                [sys.executable, "-B", "-c", script, str(ADAPTER), tmp],
+                check=False, timeout=20,
+            )
+            self.assertEqual(result.returncode, 42)
+            unit = "3-mechanics/decision"
+            self.assertEqual(concurrent_puts(Path(tmp), ((unit, "New writer\n", STORE.NEW_VERSION),)), ["written"])
+            self.assertIn(unit, (Path(tmp) / STORE.CATALOG_NAME).read_text(encoding="utf-8"))
+
+    def test_crlf_input_round_trips_version_across_platforms(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = STORE.KnowledgeStore(tmp)
+            unit = "3-mechanics/decision"
+            version = store.put(unit, "First line\r\nSecond line\r\n", STORE.NEW_VERSION)["version"]
+            self.assertEqual(store.fetch(unit)["version"], version)
+            self.assertEqual(store.unit(unit).path.read_bytes(), b"First line\nSecond line\n")
 
 
 class CatalogTest(unittest.TestCase):

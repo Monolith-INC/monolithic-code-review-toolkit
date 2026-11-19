@@ -69,6 +69,21 @@ These are implemented, not merely documented, and each has a test.
   write requires one, so two writers cannot silently clobber each other.
 - **Markdown responses.** JSON is reserved for the few fields a caller must parse.
 
+## Standalone engine
+
+Python callers can import `knowledge_store.py` without installing the MCP adapter. An optional
+`view` callback on `find` and `fetch` supplies the unit body to read. This lets a caller keep current
+and obsolete facts in the same file and rank only current facts with the existing search engine.
+Omit `view` to read the stored content. Both views report the stored revision token. Line ranges
+and continuation offsets belong to the selected view, so repeat the same view and revision when
+resuming a fetch.
+
+Managed writers and explicit catalog rebuilds use the same `knowledge-write.lock` file at the store
+root. The file is local runtime state and should stay out of Git. Keep it in place while the store is
+in use. All writers of a store must use the same locking version, because older releases use separate
+per-unit locks. After an interrupted catalog write, use `write_catalog()` to rebuild the index from
+the units on disk.
+
 ## Provenance is the trust boundary
 
 Every unit records how its facts were established, and the server surfaces it on every read:
