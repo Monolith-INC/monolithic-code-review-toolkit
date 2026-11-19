@@ -38,6 +38,17 @@ jobs:
       - name: Run knowledge adapter tests
         run: python -m unittest discover -s adapters/knowledge/tests -t . -v
 
+  knowledge-store-windows:
+    name: Knowledge store (native Windows, Python 3.12)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run dependency-free store tests
+        run: python -m unittest discover -s adapters/knowledge/tests -p test_knowledge_store.py -v
+
   # Open review findings, as executable reproductions. Deliberately a separate
   # job: these fail until the findings they encode are fixed, and folding them
   # into `checks` would stop the suites after it from running at all — hiding
